@@ -1,0 +1,634 @@
+
+// Deal Finder Logic
+
+// Initialize drag and drop for bulk deals
+document.addEventListener('DOMContentLoaded', () => {
+    initBulkDropZone();
+});
+
+function initBulkDropZone() {
+    const dropZone = document.getElementById('bulkDropZone');
+    const textarea = document.getElementById('bulkInput');
+    
+    if (!dropZone || !textarea) return;
+
+    // Prevent default drag behaviors on document
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        document.body.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    // Highlight drop zone on drag
+    dropZone.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.add('border-deal', 'bg-deal/10');
+    });
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.add('border-deal', 'bg-deal/10');
+    });
+
+    dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Only remove if leaving the dropzone itself
+        if (!dropZone.contains(e.relatedTarget)) {
+            dropZone.classList.remove('border-deal', 'bg-deal/10');
+        }
+    });
+
+    // Handle drop
+    dropZone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.remove('border-deal', 'bg-deal/10');
+        
+        const files = Array.from(e.dataTransfer.files);
+        const textItems = [];
+        
+        // Try to get text/uri-list first
+        if (e.dataTransfer.types.includes('text/uri-list')) {
+            const uriList = e.dataTransfer.getData('text/uri-list');
+            if (uriList) {
+                textItems.push(...uriList.split('\n').filter(u => u.trim() && !u.startsWith('#')));
+            }
+        }
+        
+        // Also check for plain text
+        if (e.dataTransfer.types.includes('text/plain')) {
+            const plainText = e.dataTransfer.getData('text/plain');
+            if (plainText && !textItems.includes(plainText)) {
+                textItems.push(plainText);
+            }
+        }
+        
+        // Process files
+        for (const file of files) {
+            if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
+                try {
+                    const text = await file.text();
+                    const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+                    const lines = parsed.data.map(row => {
+                        const artist = row.Artist || row.artist || '';
+                        const title = row.Title || row.title || '';
+                        const price = row.Price || row.price || row['Purchase Price'] || '';
+                        const condition = row.Condition || row.condition || 'VG';
+                        if (artist && title) {
+                            return `${artist} - ${title} ${condition} £${price}`;
+                        }
+                        return null;
+                    }).filter(Boolean);
+                    textItems.push(...lines);
+                } catch (err) {
+                    console.error('Failed to parse CSV:', err);
+                    showToast(`Failed to parse ${file.name}`, 'error');
+                }
+            } else if (file.type.startsWith('text/') || file.name.endsWith('.txt')) {
+                try {
+                    const text = await file.text();
+                    textItems.push(...text.split('\n').filter(l => l.trim()));
+                } catch (err) {
+                    console.error('Failed to read text file:', err);
+                }
+            }
+        }
+        
+        // Process URLs and text items
+        const processedItems = [];
+        for (const item of textItems) {
+            const trimmed = item.trim();
+            if (!trimmed) continue;
+            
+            // Check if it's a URL
+            if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+                try {
+                    const dealInfo = await parseURLForDeal(trimmed);
+                    if (dealInfo) {
+                        processedItems.push(dealInfo);
+                    }
+                } catch (err) {
+                    console.log('Failed to parse URL:', trimmed, err);
+                    // Add as plain text if URL parsing fails
+                    processedItems.push(trimmed);
+                }
+            } else {
+                processedItems.push(trimmed);
+            }
+        }
+        
+        // Combine with existing content
+        const existing = textarea.value.trim();
+        const newContent = processedItems.join('\n');
+        textarea.value = existing ? existing + '\n' + newContent : newContent;
+        
+        if (processedItems.length > 0) {
+            showToast(`Added ${processedItems.length} items`, 'success');
+            // Auto-analyze if we have content
+            if (processedItems.length > 0 && !existing) {
+                analyzeBulkDeals();
+            }
+        }
+    });
+    
+    // Also allow clicking to browse
+    dropZone.addEventListener('click', (e) => {
+        // Don't trigger if clicking on the textarea itself
+        if (e.target === textarea || textarea.contains(e.target)) return;
+        
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = '.csv,.txt,text/*';
+        fileInput.onchange = (e) => {
+            const files = Array.from(e.target.files);
+            for (const file of files) {
+                const event = { dataTransfer: { files: [file] } };
+                dropZone.dispatchEvent(new DragEvent('drop', event));
+            }
+        };
+        fileInput.click();
+    });
+}
+
+// Parse URLs to extract deal information
+async function parseURLForDeal(url) {
+    // Discogs sell item URL
+    const discogsSellMatch = url.match(/discogs\.com\/sell\/item\/(\d+)/);
+    if (discogsSellMatch) {
+        // Try to fetch item details via Discogs API if available
+        if (window.discogsService?.key) {
+            try {
+                // Note: Discogs doesn't have a direct API for sell items
+                // We'd need to scrape or use marketplace search
+                showToast('Discogs URL detected - manual entry recommended', 'warning');
+            } catch (e) {
+                console.log('Failed to fetch Discogs item:', e);
+            }
+        }
+        return `Discogs Item #${discogsSellMatch[1]} - ${url}`;
+    }
+    
+    // eBay item URL
+    const ebayMatch = url.match(/ebay\.[a-z.]+\/itm\/(\d+)/) || url.match(/ebay\.[a-z.]+\/itm\/[^\/]+\/(\d+)/);
+    if (ebayMatch) {
+        return `eBay Item #${ebayMatch[1]} - ${url}`;
+    }
+    
+    // Generic marketplace URL - return as-is with warning
+    return `${url} (URL access restricted - please paste details manually)`;
+}
+
+function calculateDeal() {
+const buyPrice = parseFloat(document.getElementById('calcBuyPrice').value) || 0;
+    const resalePrice = parseFloat(document.getElementById('calcResalePrice').value) || 0;
+    const condition = document.getElementById('calcCondition').value;
+    const goal = document.getElementById('calcGoal').value;
+    
+    if (buyPrice <= 0 || resalePrice <= 0) return;
+    
+    const container = document.getElementById('dealResult');
+    container.classList.remove('hidden');
+    
+    // Calculate with condition adjustment
+    const conditionMult = {
+        'M': 1.5, 'NM': 1.3, 'VG+': 1.0, 'VG': 0.7, 'G+': 0.5
+    };
+    
+    const adjustedResale = resalePrice * (conditionMult[condition] || 0.7);
+    
+    // Fees
+    const ebayFee = adjustedResale * 0.13;
+    const paypalFee = (adjustedResale * 0.029) + 0.30;
+    const costs = 6; // shipping + packing estimate
+    
+    // Strategy pricing
+    let listPrice;
+    switch(goal) {
+        case 'quick': listPrice = adjustedResale * 0.90; break;
+        case 'max': listPrice = adjustedResale * 1.10; break;
+        default: listPrice = adjustedResale;
+    }
+    
+    const netProfit = listPrice - buyPrice - ebayFee - paypalFee - costs;
+    const roi = buyPrice > 0 ? ((netProfit / buyPrice) * 100).toFixed(1) : 0;
+    const totalFees = ebayFee + paypalFee + costs;
+    
+    // Determine recommendation
+    let recommendation, colorClass, icon;
+    if (netProfit < 3) {
+        recommendation = 'PASS - Insufficient margin';
+        colorClass = 'bg-loss/10 border-loss';
+        icon = 'x-circle';
+    } else if (roi < 30) {
+        recommendation = 'MARGINAL - Low ROI';
+        colorClass = 'bg-yellow-500/10 border-yellow-500';
+        icon = 'alert-triangle';
+    } else if (roi >= 50) {
+        recommendation = 'HOT DEAL - Quick flip potential!';
+        colorClass = 'bg-profit/10 border-profit';
+        icon = 'zap';
+    } else {
+        recommendation = 'GOOD DEAL - Worth pursuing';
+        colorClass = 'bg-primary/10 border-primary';
+        icon = 'check-circle';
+    }
+    
+    container.className = `mt-6 p-6 rounded-xl border ${colorClass}`;
+    container.innerHTML = `
+        <div class="flex items-start gap-4">
+            <div class="p-3 rounded-full bg-surface">
+                <i data-feather="${icon}" class="w-6 h-6 ${netProfit >= 3 ? 'text-profit' : 'text-loss'}"></i>
+            </div>
+            <div class="flex-1">
+                <h3 class="font-semibold text-lg mb-1">${recommendation}</h3>
+                <div class="grid grid-cols-3 gap-4 mt-4">
+                    <div>
+                        <p class="text-xs text-gray-500 mb-1">Est. Net Profit</p>
+                        <p class="text-2xl font-bold ${netProfit >= 0 ? 'text-profit' : 'text-loss'}">£${netProfit.toFixed(2)}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 mb-1">ROI</p>
+                        <p class="text-2xl font-bold ${roi >= 30 ? 'text-profit' : 'text-gray-400'}">${roi}%</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500 mb-1">Suggested List</p>
+                        <p class="text-2xl font-bold text-gray-200">£${listPrice.toFixed(0)}</p>
+                    </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-gray-700/50 grid grid-cols-4 gap-2 text-sm">
+                    <div class="text-gray-500">Buy: £${buyPrice.toFixed(2)}</div>
+                    <div class="text-gray-500">eBay: £${ebayFee.toFixed(2)}</div>
+                    <div class="text-gray-500">PayPal: £${paypalFee.toFixed(2)}</div>
+                    <div class="text-gray-500">Ship: £${costs.toFixed(2)}</div>
+                </div>
+                <div class="mt-4 flex gap-2">
+                    ${netProfit >= 3 ? `
+                        <button onclick="saveDealToCollection()" class="px-4 py-2 bg-primary rounded-lg text-sm hover:bg-primary/80 transition-all">
+                            Save to Watchlist
+                        </button>
+                    ` : ''}
+                    <button onclick="resetCalculator()" class="px-4 py-2 border border-gray-600 rounded-lg text-sm hover:border-gray-500 transition-all">
+                        Reset
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    feather.replace();
+}
+
+function resetCalculator() {
+    document.getElementById('calcBuyPrice').value = '';
+    document.getElementById('calcResalePrice').value = '';
+    document.getElementById('calcCondition').value = 'VG';
+    document.getElementById('calcGoal').value = 'balanced';
+    document.getElementById('dealResult').classList.add('hidden');
+}
+
+async function analyzeBulkDeals() {
+    const input = document.getElementById('bulkInput').value.trim();
+    if (!input) {
+        showToast('Enter some deals to analyze first', 'error');
+        return;
+    }
+    
+    const lines = input.split('\n').filter(l => l.trim());
+    if (lines.length === 0) return;
+    
+    showToast(`Analyzing ${lines.length} potential deals...`, 'success');
+    
+    const results = [];
+    
+    for (const line of lines) {
+        // Parse different formats:
+        // "Artist - Title - £15"
+        // "Artist - Title VG+ £20"
+        // URLs
+        
+        const priceMatch = line.match(/[£$€](\d+(?:\.\d{2})?)/);
+        const price = priceMatch ? parseFloat(priceMatch[1]) : 0;
+        
+        // Extract artist/title (rough parsing)
+        const parts = line.replace(/[£$€]\d+(?:\.\d{2})?/, '').split(/[-–—]/);
+        const artist = parts[0]?.trim() || 'Unknown';
+        const title = parts[1]?.trim() || 'Unknown';
+        
+        const conditionMatch = line.match(/\b(M|NM|VG\+|VG|G\+|G)\b/i);
+        const condition = conditionMatch ? conditionMatch[1].toUpperCase() : 'VG';
+        
+        // Try to get Discogs data for better estimation
+        let discogsData = null;
+        if (window.discogsService?.key && artist && title) {
+            try {
+                const search = await window.discogsService.searchRelease(artist, title, null);
+                if (search) {
+                    discogsData = await window.discogsService.getReleaseDetails(search.id);
+                }
+            } catch (e) {
+                console.log('Discogs lookup failed for', artist, title);
+            }
+        }
+        
+        // Calculate metrics
+        const estimatedValue = discogsData?.lowest_price || discogsData?.median || price * 2; // Assume 2x if no data
+        const analysis = calculateDealMetrics(price, estimatedValue, condition);
+        
+        results.push({
+            artist,
+            title,
+            price,
+            condition,
+            ...analysis,
+            discogsUrl: discogsData?.uri,
+            discogsId: discogsData?.id,
+            hasDiscogsData: !!discogsData
+        });
+    }
+    
+    renderDealsResults(results);
+}
+
+function calculateDealMetrics(buyPrice, estimatedValue, condition = 'VG') {
+    const conditionMult = {
+        'M': 1.5, 'NM': 1.3, 'VG+': 1.0, 'VG': 0.7,
+        'G+': 0.5, 'G': 0.35
+    };
+    
+    const adjustedValue = estimatedValue * (conditionMult[condition] || 0.7);
+    
+    // Fees
+    const ebayFee = adjustedValue * 0.13;
+    const paypalFee = (adjustedValue * 0.029) + 0.30;
+    const costs = 6;
+    
+    const netProfit = adjustedValue - buyPrice - ebayFee - paypalFee - costs;
+    const roi = buyPrice > 0 ? ((netProfit / buyPrice) * 100).toFixed(1) : 0;
+    
+    return {
+        adjustedValue: Math.round(adjustedValue),
+        netProfit: Math.round(netProfit),
+        roi,
+        totalFees: Math.round((ebayFee + paypalFee + costs) * 100) / 100,
+        isViable: netProfit >= 3,
+        isHot: netProfit >= 8 && roi >= 40
+    };
+}
+
+function renderDealsResults(results) {
+    const container = document.getElementById('dealsGrid');
+    const resultsSection = document.getElementById('dealsResults');
+    const emptyState = document.getElementById('dealsEmptyState');
+    
+    emptyState.classList.add('hidden');
+    resultsSection.classList.remove('hidden');
+    
+    // Update counts
+    const hotCount = results.filter(r => r.isHot).length;
+    const skipCount = results.filter(r => !r.isViable).length;
+    document.getElementById('hotDealsCount').textContent = `${hotCount} Hot Deals`;
+    document.getElementById('skipCount').textContent = `${skipCount} Pass`;
+    container.innerHTML = results.map((deal, index) => {
+        const profitClass = deal.netProfit >= 0 ? 'text-profit' : 'text-loss';
+        const cardClass = deal.isHot ? 'border-profit bg-profit/5' : 
+                         !deal.isViable ? 'border-gray-700 opacity-75' : 'border-deal/50';
+        const badgeText = deal.isHot ? '🔥 HOT' : deal.isViable ? 'GOOD' : 'PASS';
+        const badgeClass = deal.isHot ? 'bg-profit text-white' : deal.isViable ? 'bg-deal/20 text-deal' : 'bg-gray-700 text-gray-400';
+        
+        return `
+            <div class="deal-card ${cardClass} p-4 rounded-xl border cursor-pointer transition-all hover:-translate-y-1" onclick="showDealDetail(${index})">
+                <div class="flex justify-between items-start mb-3">
+                    <span class="px-2 py-1 rounded text-xs font-bold ${badgeClass}">${badgeText}</span>
+                    ${deal.hasDiscogsData ? '<span class="text-xs text-gray-500" title="Discogs data available">🎵</span>' : ''}
+                </div>
+                <h3 class="font-semibold text-gray-100 truncate mb-1" title="${deal.artist}">${deal.artist}</h3>
+                <p class="text-sm text-gray-400 truncate mb-3" title="${deal.title}">${deal.title}</p>
+                
+                <div class="grid grid-cols-2 gap-2 mb-3 text-sm">
+                    <div>
+                        <span class="text-gray-500 text-xs">Buy</span>
+                        <p class="font-medium">£${parseFloat(deal.price).toFixed(2)}</p>
+                    </div>
+                    <div>
+                        <span class="text-gray-500 text-xs">Est. Value</span>
+                        <p class="font-medium">£${deal.adjustedValue}</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center justify-between pt-3 border-t border-gray-700">
+                    <div class="${profitClass} font-bold">
+                        £${deal.netProfit} profit
+                    </div>
+                    <div class="text-sm ${deal.roi >= 30 ? 'text-profit' : 'text-gray-400'}">
+                        ${deal.roi}% ROI
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // Store for detail view
+    window.analyzedDeals = results;
+}
+
+function showDealDetail(index) {
+    const deal = window.analyzedDeals[index];
+    const modal = document.getElementById('dealModal');
+    const content = document.getElementById('dealModalContent');
+    
+    const profitColor = deal.netProfit >= 3 ? 'text-profit' : 'text-loss';
+    const headerColor = deal.isHot ? 'bg-profit/10 border-profit' : deal.isViable ? 'bg-deal/10 border-deal' : 'bg-gray-800 border-gray-700';
+    
+    content.innerHTML = `
+        <div class="space-y-4">
+            <div class="p-4 rounded-xl border ${headerColor}">
+                <h3 class="text-lg font-bold mb-1">${deal.artist}</h3>
+                <p class="text-gray-400">${deal.title}</p>
+                <p class="text-sm text-gray-500 mt-2">Condition: ${deal.condition}</p>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div class="p-4 bg-surface rounded-lg">
+                    <p class="text-xs text-gray-500 mb-1">Purchase Price</p>
+                    <p class="text-xl font-bold">£${deal.price.toFixed(2)}</p>
+                </div>
+                <div class="p-4 bg-surface rounded-lg">
+                    <p class="text-xs text-gray-500 mb-1">Market Value (adj.)</p>
+                    <p class="text-xl font-bold">£${deal.adjustedValue}</p>
+                </div>
+                <div class="p-4 bg-surface rounded-lg">
+                    <p class="text-xs text-gray-500 mb-1">Total Fees (~16%)</p>
+                    <p class="text-xl font-bold text-gray-400">£${deal.totalFees}</p>
+                </div>
+                <div class="p-4 bg-surface rounded-lg">
+                    <p class="text-xs text-gray-500 mb-1">Net Profit</p>
+                    <p class="text-xl font-bold ${profitColor}">£${deal.netProfit}</p>
+                </div>
+            </div>
+            
+            <div class="p-4 bg-surface rounded-lg">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-sm text-gray-400">Return on Investment</span>
+                    <span class="text-lg font-bold ${deal.roi >= 30 ? 'text-profit' : 'text-yellow-400'}">${deal.roi}%</span>
+                </div>
+                <div class="h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div class="h-full ${deal.roi >= 30 ? 'bg-profit' : deal.roi > 0 ? 'bg-yellow-500' : 'bg-loss'}" style="width: ${Math.min(Math.abs(deal.roi), 100)}%"></div>
+                </div>
+            </div>
+            
+            ${deal.discogsUrl ? `
+                <a href="${deal.discogsUrl}" target="_blank" class="flex items-center gap-2 text-sm text-primary hover:underline">
+                    View on Discogs
+                    <i data-feather="external-link" class="w-4 h-4"></i>
+                </a>
+            ` : ''}
+            <div class="flex gap-3 mt-6">
+                ${deal.isViable ? `
+                    <button onclick="addDealToCollectionFromModal(${index})" class="flex-1 px-4 py-3 bg-gradient-to-r from-deal to-pink-600 rounded-lg font-medium hover:shadow-lg transition-all">
+                        Add to Collection
+                    </button>
+                ` : ''}
+                <button onclick="closeDealModal()" class="px-4 py-3 border border-gray-600 rounded-lg hover:border-gray-500 transition-all">
+                    Close
+                </button>
+            </div>
+</div>
+    `;
+    feather.replace();
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeDealModal() {
+    document.getElementById('dealModal').classList.add('hidden');
+    document.getElementById('dealModal').classList.remove('flex');
+}
+function addDealToCollection(index) {
+    const deal = window.analyzedDeals[index];
+    // Create collection entry
+    const record = {
+        artist: deal.artist,
+        title: deal.title,
+        purchasePrice: deal.price,
+        purchaseDate: new Date().toISOString().split('T')[0],
+        purchaseSource: 'prospective_deal',
+        conditionVinyl: deal.condition,
+        conditionSleeve: deal.condition,
+        estimatedValue: deal.adjustedValue,
+        status: 'prospective',
+        dateAdded: new Date().toISOString(),
+        notes: `Deal analysis: Potential profit £${deal.netProfit} (${deal.roi}% ROI). ${deal.discogsUrl ? 'Discogs: ' + deal.discogsUrl : ''}`
+    };
+    
+    // Add to local collection storage
+    let collection = JSON.parse(localStorage.getItem('vinyl_collection') || '[]');
+    collection.push(record);
+    localStorage.setItem('vinyl_collection', JSON.stringify(collection));
+    
+    showToast('Deal saved to collection!', 'success');
+    closeDealModal();
+}
+
+function addDealToCollectionFromModal(index) {
+    // Alias for the same function, called from modal
+    addDealToCollection(index);
+}
+function clearBulkInput() {
+    document.getElementById('bulkInput').value = '';
+    document.getElementById('dealsResults').classList.add('hidden');
+    document.getElementById('dealsEmptyState').classList.remove('hidden');
+}
+
+function handleBulkCSV(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+            // Convert CSV to text format for analysis
+            const lines = results.data.map(row => {
+                const artist = row.Artist || row.artist || '';
+                const title = row.Title || row.title || '';
+                const price = row.Price || row.price || row['Purchase Price'] || '';
+                const condition = row.Condition || row.condition || 'VG';
+                if (artist && title) {
+                    return `${artist} - ${title} ${condition} £${price}`;
+                }
+                return null;
+            }).filter(Boolean);
+            
+            document.getElementById('bulkInput').value = lines.join('\n');
+            analyzeBulkDeals();
+        }
+    });
+}
+
+function saveDealToCollection() {
+    // Quick save from calculator
+    const buyPrice = parseFloat(document.getElementById('calcBuyPrice').value);
+    const resalePrice = parseFloat(document.getElementById('calcResalePrice').value);
+    
+    if (!buyPrice || !resalePrice) return;
+    
+    const record = {
+        artist: 'Unknown (from calculator)',
+        title: 'Deal analysis',
+        purchasePrice: buyPrice,
+        estimatedValue: resalePrice,
+        status: 'prospective',
+        dateAdded: new Date().toISOString(),
+        notes: `Calculated potential deal. Buy: £${buyPrice}, Est. value: £${resalePrice}`
+    };
+    
+    let collection = JSON.parse(localStorage.getItem('vinyl_collection') || '[]');
+    collection.push(record);
+    localStorage.setItem('vinyl_collection', JSON.stringify(collection));
+    
+    showToast('Deal saved to watchlist!', 'success');
+}
+function importFromCSV() {
+    // Trigger file input
+    document.getElementById('bulkCSVInput').click();
+}
+
+// showToast helper if not already defined
+if (typeof showToast !== 'function') {
+    function showToast(message, type = 'success') {
+        const existing = document.querySelector('.toast');
+        if (existing) existing.remove();
+
+        const iconMap = {
+            success: 'check',
+            error: 'alert-circle',
+            warning: 'alert-triangle'
+        };
+        
+        const colorMap = {
+            success: 'text-green-400',
+            error: 'text-red-400',
+            warning: 'text-yellow-400'
+        };
+
+        const toast = document.createElement('div');
+        toast.className = `toast ${type} flex items-center gap-3`;
+        toast.innerHTML = `
+            <i data-feather="${iconMap[type] || 'info'}" class="w-5 h-5 ${colorMap[type] || 'text-blue-400'}"></i>
+            <span class="text-sm text-gray-200">${message}</span>
+        `;
+        document.body.appendChild(toast);
+        if (typeof feather !== 'undefined') feather.replace();
+
+        requestAnimationFrame(() => toast.classList.add('show'));
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+}
