@@ -83,7 +83,7 @@ function showToast(message, type = 'info', duration = 4000) {
     `;
     
     toastContainer.appendChild(toast);
-    if (typeof feather !== "undefined") feather.replace();
+    feather.replace();
     
     // Animate in
     requestAnimationFrame(() => toast.classList.add('show'));
@@ -140,8 +140,6 @@ function updateAnalysisProgress(percent, stageText) {
 }
 
 // DOM Elements
-let uploadedPhotos = [];
-let hostedPhotoUrls = [];
 const dropZone = document.getElementById('dropZone');
 const photoInput = document.getElementById('photoInput');
 const photoGrid = document.getElementById('photoGrid');
@@ -637,7 +635,7 @@ function populateFieldsFromDiscogs(discogsData) {
             </div>
         `;
         panel.appendChild(discogsBadge);
-        if (typeof feather !== "undefined") feather.replace();
+        feather.replace();
     }
 }
 function populateFieldsFromOCR(data) {
@@ -796,7 +794,7 @@ function updateDetectedInfoPanel(data) {
             </div>
         ` : ''}
     `;
-    if (typeof feather !== "undefined") feather.replace();
+    feather.replace();
 }
 
 function updateDiscogsMatchPanel(match) {
@@ -833,7 +831,7 @@ function updateDiscogsMatchPanel(match) {
             <a href="https://www.discogs.com/release/${match.release.id}" target="_blank" class="text-xs text-blue-400 hover:underline">View matched release →</a>
         </div>
     `;
-    if (typeof feather !== "undefined") feather.replace();
+    feather.replace();
 }
 function renderPhotoGrid() {
     if (uploadedPhotos.length === 0) {
@@ -850,7 +848,7 @@ function renderPhotoGrid() {
             </button>
         </div>
     `).join('');
-    if (typeof feather !== "undefined") feather.replace();
+    feather.replace();
 }
 function removePhoto(idx) {
     // Also delete from imgBB if hosted
@@ -1297,7 +1295,7 @@ function renderShotList() {
             ${shot.critical && !have ? '<span class="ml-auto text-xs text-yellow-500 font-medium">CRITICAL</span>' : ''}
         </div>
     `}).join('');
-    if (typeof feather !== "undefined") feather.replace();
+    feather.replace();
 }
 function copyHTML() {
     const html = document.getElementById('htmlOutput');
@@ -1695,7 +1693,7 @@ function showToast(message, type = 'success') {
         <span class="text-sm text-gray-200">${message}</span>
     `;
     document.body.appendChild(toast);
-    if (typeof feather !== "undefined") feather.replace();
+    feather.replace();
 
     requestAnimationFrame(() => toast.classList.add('show'));
     setTimeout(() => {
@@ -1829,12 +1827,7 @@ function populateFieldsFromCollection(record) {
 
 // Call check on load
 checkCollectionImport();
-
-async function performAnalysis(data) {
-    const { artist, title, catNo, year, cost, goal, market } = data;
-    
-    // Determine currency symbol
-    const currency = market === 'uk' ? '£' : market === 'us' ? '$' : '€';
+: '€';
     
     // Mock comp research results
     const comps = {
@@ -2300,7 +2293,7 @@ function renderShotList() {
             ${shot.critical && !have ? '<span class="ml-auto text-xs text-yellow-500 font-medium">CRITICAL</span>' : ''}
         </div>
     `}).join('');
-    if (typeof feather !== "undefined") feather.replace();
+    feather.replace();
 }
 function copyHTML() {
     const html = document.getElementById('htmlOutput');
@@ -2691,7 +2684,7 @@ function showToast(message, type = 'success') {
         <span class="text-sm text-gray-200">${message}</span>
     `;
     document.body.appendChild(toast);
-    if (typeof feather !== "undefined") feather.replace();
+    feather.replace();
 
     requestAnimationFrame(() => toast.classList.add('show'));
     setTimeout(() => {
@@ -3105,7 +3098,7 @@ function renderShotList() {
             ${shot.critical && !have ? '<span class="ml-auto text-xs text-yellow-500 font-medium">CRITICAL</span>' : ''}
         </div>
     `}).join('');
-    if (typeof feather !== "undefined") feather.replace();
+    feather.replace();
 }
 function copyHTML() {
     const html = document.getElementById('htmlOutput');
@@ -3503,7 +3496,7 @@ function showToast(message, type = 'success') {
         <span class="text-sm text-gray-200">${message}</span>
     `;
     document.body.appendChild(toast);
-    if (typeof feather !== "undefined") feather.replace();
+    feather.replace();
 
     requestAnimationFrame(() => toast.classList.add('show'));
     setTimeout(() => {
@@ -3537,12 +3530,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
- 
-async function performAnalysis(data) {
-    const { artist, title, catNo, year, cost, goal, market } = data;
-    
-    // Determine currency symbol
-    const currency = market === 'uk' ? '£' : market === 'us' ? '$' : '€';
+ : '€';
     
     // Mock comp research results
     const comps = {
@@ -4008,7 +3996,7 @@ function renderShotList() {
             ${shot.critical && !have ? '<span class="ml-auto text-xs text-yellow-500 font-medium">CRITICAL</span>' : ''}
         </div>
     `}).join('');
-    if (typeof feather !== "undefined") feather.replace();
+    feather.replace();
 }
 function copyHTML() {
     const html = document.getElementById('htmlOutput');
@@ -4399,7 +4387,7 @@ function showToast(message, type = 'success') {
         <span class="text-sm text-gray-200">${message}</span>
     `;
     document.body.appendChild(toast);
-    if (typeof feather !== "undefined") feather.replace();
+    feather.replace();
 
     requestAnimationFrame(() => toast.classList.add('show'));
     setTimeout(() => {
@@ -4433,12 +4421,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
- 
-async function performAnalysis(data) {
-    const { artist, title, catNo, year, cost, goal, market } = data;
-    
-    // Determine currency symbol
-    const currency = market === 'uk' ? '£' : market === 'us' ? '$' : '€';
+ : '€';
     
     // Mock comp research results
     const comps = {
@@ -4876,7 +4859,7 @@ function renderShotList() {
             ${shot.critical && !have ? '<span class="ml-auto text-xs text-yellow-500 font-medium">CRITICAL</span>' : ''}
         </div>
     `}).join('');
-    if (typeof feather !== "undefined") feather.replace();
+    feather.replace();
 }
 function copyHTML() {
     const html = document.getElementById('htmlOutput');
@@ -5274,7 +5257,7 @@ function showToast(message, type = 'success') {
         <span class="text-sm text-gray-200">${message}</span>
     `;
     document.body.appendChild(toast);
-    if (typeof feather !== "undefined") feather.replace();
+    feather.replace();
 
     requestAnimationFrame(() => toast.classList.add('show'));
     setTimeout(() => {
@@ -5408,12 +5391,7 @@ function populateFieldsFromCollection(record) {
 
 // Call check on load
 checkCollectionImport();
-
-async function performAnalysis(data) {
-    const { artist, title, catNo, year, cost, goal, market } = data;
-    
-    // Determine currency symbol
-    const currency = market === 'uk' ? '£' : market === 'us' ? '$' : '€';
+: '€';
     
     // Mock comp research results
     const comps = {
@@ -5879,7 +5857,7 @@ function renderShotList() {
             ${shot.critical && !have ? '<span class="ml-auto text-xs text-yellow-500 font-medium">CRITICAL</span>' : ''}
         </div>
     `}).join('');
-    if (typeof feather !== "undefined") feather.replace();
+    feather.replace();
 }
 function copyHTML() {
     const html = document.getElementById('htmlOutput');
@@ -6270,7 +6248,7 @@ function showToast(message, type = 'success') {
         <span class="text-sm text-gray-200">${message}</span>
     `;
     document.body.appendChild(toast);
-    if (typeof feather !== "undefined") feather.replace();
+    feather.replace();
 
     requestAnimationFrame(() => toast.classList.add('show'));
     setTimeout(() => {
@@ -6304,12 +6282,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
- 
-async function performAnalysis(data) {
-    const { artist, title, catNo, year, cost, goal, market } = data;
-    
-    // Determine currency symbol
-    const currency = market === 'uk' ? '£' : market === 'us' ? '$' : '€';
+ : '€';
     
     // Mock comp research results
     const comps = {
@@ -6776,7 +6749,7 @@ function renderShotList() {
             ${shot.critical && !have ? '<span class="ml-auto text-xs text-yellow-500 font-medium">CRITICAL</span>' : ''}
         </div>
     `}).join('');
-    if (typeof feather !== "undefined") feather.replace();
+    feather.replace();
 }
 function copyHTML() {
     const html = document.getElementById('htmlOutput');
@@ -7174,7 +7147,7 @@ function showToast(message, type = 'success') {
         <span class="text-sm text-gray-200">${message}</span>
     `;
     document.body.appendChild(toast);
-    if (typeof feather !== "undefined") feather.replace();
+    feather.replace();
 
     requestAnimationFrame(() => toast.classList.add('show'));
     setTimeout(() => {
@@ -7208,12 +7181,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
- 
-async function performAnalysis(data) {
-    const { artist, title, catNo, year, cost, goal, market } = data;
-    
-    // Determine currency symbol
-    const currency = market === 'uk' ? '£' : market === 'us' ? '$' : '€';
+ : '€';
     
     // Mock comp research results
     const comps = {
@@ -7679,7 +7647,7 @@ function renderShotList() {
             ${shot.critical && !have ? '<span class="ml-auto text-xs text-yellow-500 font-medium">CRITICAL</span>' : ''}
         </div>
     `}).join('');
-    if (typeof feather !== "undefined") feather.replace();
+    feather.replace();
 }
 function copyHTML() {
     const html = document.getElementById('htmlOutput');
@@ -8070,7 +8038,7 @@ function showToast(message, type = 'success') {
         <span class="text-sm text-gray-200">${message}</span>
     `;
     document.body.appendChild(toast);
-    if (typeof feather !== "undefined") feather.replace();
+    feather.replace();
 
     requestAnimationFrame(() => toast.classList.add('show'));
     setTimeout(() => {

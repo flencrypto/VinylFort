@@ -16,16 +16,18 @@
     <link rel="dns-prefetch" href="//fonts.googleapis.com">
     <link rel="dns-prefetch" href="//imgbb.com">
 <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#7c3aed',
-                        secondary: '#06b6d4',
-                        accent: '#f59e0b',
-                        surface: '#0f172a',
-                        'surface-light': '#1e293b',
+        if (typeof tailwind !== 'undefined') {
+            tailwind.config = {
+                darkMode: 'class',
+                theme: {
+                    extend: {
+                        colors: {
+                            primary: '#7c3aed',
+                            secondary: '#06b6d4',
+                            accent: '#f59e0b',
+                            surface: '#0f172a',
+                            'surface-light': '#1e293b',
+                        }
                     }
                 }
             }

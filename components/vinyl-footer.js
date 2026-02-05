@@ -1,6 +1,8 @@
 class VinylFooter extends HTMLElement {
   connectedCallback() {
-    this.attachShadow({ mode: 'open' });
+    if (!this.shadowRoot) {
+      this.attachShadow({ mode: 'open' });
+    }
     this.shadowRoot.innerHTML = `
       <style>
         :host {
