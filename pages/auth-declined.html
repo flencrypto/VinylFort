@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VinylFort - Authentication Declined</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>VinylFort</h1>
+        </header>
+
+        <main class="auth-page">
+            <div class="auth-declined">
+                <div class="icon-container">
+                    <svg class="error-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                        <circle class="error-circle" cx="26" cy="26" r="25" fill="none"/>
+                        <path class="error-cross" fill="none" d="M16 16 36 36 M36 16 16 36"/>
+                    </svg>
+                </div>
+                <h2>Authentication Declined</h2>
+                <p class="error-message">We were unable to verify your credentials.</p>
+                
+                <div class="info-box error-info">
+                    <h3>Possible Reasons</h3>
+                    <ul>
+                        <li>Invalid username or password</li>
+                        <li>Account has been suspended or deactivated</li>
+                        <li>Access permissions have changed</li>
+                        <li>Session has expired</li>
+                    </ul>
+                </div>
+
+                <div class="action-buttons">
+                    <a href="#retry" class="btn btn-primary">Try Again</a>
+                    <a href="#reset" class="btn btn-secondary">Reset Password</a>
+                    <a href="#support" class="btn btn-tertiary">Contact Support</a>
+                </div>
+
+                <div class="additional-info">
+                    <h3>Need Help?</h3>
+                    <p>If you continue to experience authentication issues, please:</p>
+                    <ul>
+                        <li>Verify that your account is active</li>
+                        <li>Check that you're using the correct credentials</li>
+                        <li>Clear your browser cache and cookies</li>
+                        <li>Contact our support team for assistance</li>
+                    </ul>
+                    <p><strong>Privacy Note:</strong> All authentication attempts are logged for security purposes in accordance with our <a href="privacy-policy.html">Privacy Policy</a>.</p>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 VinylFort. All rights reserved.</p>
+            <nav>
+                <a href="privacy-policy.html">Privacy Policy</a> | 
+                <a href="auth-accepted.html">Auth Accepted</a>
+            </nav>
+        </footer>
+    </div>
+</body>
+</html>

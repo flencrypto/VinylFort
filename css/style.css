@@ -1,0 +1,304 @@
+/* VinylFort Styles */
+
+:root {
+    --primary-color: #2c3e50;
+    --secondary-color: #3498db;
+    --success-color: #27ae60;
+    --error-color: #e74c3c;
+    --background-color: #ecf0f1;
+    --text-color: #2c3e50;
+    --border-color: #bdc3c7;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: var(--text-color);
+    background-color: var(--background-color);
+}
+
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: white;
+    min-height: 100vh;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+header {
+    text-align: center;
+    padding: 30px 0;
+    border-bottom: 3px solid var(--primary-color);
+    margin-bottom: 30px;
+}
+
+header h1 {
+    color: var(--primary-color);
+    font-size: 2.5em;
+    margin-bottom: 10px;
+}
+
+.last-updated {
+    color: #7f8c8d;
+    font-style: italic;
+}
+
+main {
+    padding: 20px 0;
+}
+
+section {
+    margin-bottom: 30px;
+}
+
+h2 {
+    color: var(--primary-color);
+    margin-bottom: 15px;
+    font-size: 1.8em;
+    border-bottom: 2px solid var(--secondary-color);
+    padding-bottom: 10px;
+}
+
+h3 {
+    color: var(--primary-color);
+    margin-bottom: 10px;
+    font-size: 1.3em;
+}
+
+p {
+    margin-bottom: 15px;
+}
+
+ul {
+    margin-left: 30px;
+    margin-bottom: 15px;
+}
+
+li {
+    margin-bottom: 8px;
+}
+
+a {
+    color: var(--secondary-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: var(--primary-color);
+    text-decoration: underline;
+}
+
+/* Authentication Pages */
+.auth-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 60vh;
+}
+
+.auth-success,
+.auth-declined {
+    text-align: center;
+    max-width: 600px;
+    width: 100%;
+}
+
+.icon-container {
+    margin: 30px 0;
+}
+
+.checkmark,
+.error-icon {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto;
+}
+
+.checkmark-circle {
+    stroke: var(--success-color);
+    stroke-width: 2;
+    stroke-dasharray: 166;
+    stroke-dashoffset: 166;
+    animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+
+.checkmark-check {
+    stroke: var(--success-color);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 48;
+    stroke-dashoffset: 48;
+    animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.4s forwards;
+}
+
+.error-circle {
+    stroke: var(--error-color);
+    stroke-width: 2;
+}
+
+.error-cross {
+    stroke: var(--error-color);
+    stroke-width: 3;
+    stroke-linecap: round;
+}
+
+@keyframes stroke {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+.auth-success h2 {
+    color: var(--success-color);
+    border-bottom: none;
+}
+
+.auth-declined h2 {
+    color: var(--error-color);
+    border-bottom: none;
+}
+
+.success-message {
+    color: var(--success-color);
+    font-size: 1.2em;
+    font-weight: 500;
+}
+
+.error-message {
+    color: var(--error-color);
+    font-size: 1.2em;
+    font-weight: 500;
+}
+
+.info-box {
+    background-color: #e8f5e9;
+    border: 1px solid var(--success-color);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 30px 0;
+    text-align: left;
+}
+
+.error-info {
+    background-color: #ffebee;
+    border-color: var(--error-color);
+}
+
+.info-box h3 {
+    margin-top: 0;
+}
+
+.action-buttons {
+    margin: 30px 0;
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    display: inline-block;
+    padding: 12px 30px;
+    border-radius: 5px;
+    font-size: 1em;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #2980b9;
+    text-decoration: none;
+}
+
+.btn-secondary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #1a252f;
+    text-decoration: none;
+}
+
+.btn-tertiary {
+    background-color: white;
+    color: var(--primary-color);
+    border: 2px solid var(--primary-color);
+}
+
+.btn-tertiary:hover {
+    background-color: var(--primary-color);
+    color: white;
+    text-decoration: none;
+}
+
+.additional-info {
+    background-color: #f8f9fa;
+    border-left: 4px solid var(--secondary-color);
+    padding: 20px;
+    margin: 30px 0;
+    text-align: left;
+}
+
+.additional-info p {
+    margin-bottom: 10px;
+}
+
+.additional-info strong {
+    color: var(--primary-color);
+}
+
+footer {
+    margin-top: 50px;
+    padding-top: 20px;
+    border-top: 2px solid var(--border-color);
+    text-align: center;
+    color: #7f8c8d;
+}
+
+footer nav {
+    margin-top: 10px;
+}
+
+footer nav a {
+    margin: 0 10px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+
+    header h1 {
+        font-size: 2em;
+    }
+
+    h2 {
+        font-size: 1.5em;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .btn {
+        width: 100%;
+    }
+}
