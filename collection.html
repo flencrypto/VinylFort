@@ -15,7 +15,7 @@
     <link rel="dns-prefetch" href="//fonts.googleapis.com">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script>
-        tailwind.config = {
+        if (typeof tailwind !== 'undefined') tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {

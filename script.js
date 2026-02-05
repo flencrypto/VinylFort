@@ -83,7 +83,7 @@ function showToast(message, type = 'info', duration = 4000) {
     `;
     
     toastContainer.appendChild(toast);
-    feather.replace();
+    if (typeof feather !== "undefined") feather.replace();
     
     // Animate in
     requestAnimationFrame(() => toast.classList.add('show'));
@@ -140,6 +140,8 @@ function updateAnalysisProgress(percent, stageText) {
 }
 
 // DOM Elements
+let uploadedPhotos = [];
+let hostedPhotoUrls = [];
 const dropZone = document.getElementById('dropZone');
 const photoInput = document.getElementById('photoInput');
 const photoGrid = document.getElementById('photoGrid');
@@ -635,7 +637,7 @@ function populateFieldsFromDiscogs(discogsData) {
             </div>
         `;
         panel.appendChild(discogsBadge);
-        feather.replace();
+        if (typeof feather !== "undefined") feather.replace();
     }
 }
 function populateFieldsFromOCR(data) {
@@ -794,7 +796,7 @@ function updateDetectedInfoPanel(data) {
             </div>
         ` : ''}
     `;
-    feather.replace();
+    if (typeof feather !== "undefined") feather.replace();
 }
 
 function updateDiscogsMatchPanel(match) {
@@ -831,7 +833,7 @@ function updateDiscogsMatchPanel(match) {
             <a href="https://www.discogs.com/release/${match.release.id}" target="_blank" class="text-xs text-blue-400 hover:underline">View matched release →</a>
         </div>
     `;
-    feather.replace();
+    if (typeof feather !== "undefined") feather.replace();
 }
 function renderPhotoGrid() {
     if (uploadedPhotos.length === 0) {
@@ -848,7 +850,7 @@ function renderPhotoGrid() {
             </button>
         </div>
     `).join('');
-    feather.replace();
+    if (typeof feather !== "undefined") feather.replace();
 }
 function removePhoto(idx) {
     // Also delete from imgBB if hosted
@@ -1295,7 +1297,7 @@ function renderShotList() {
             ${shot.critical && !have ? '<span class="ml-auto text-xs text-yellow-500 font-medium">CRITICAL</span>' : ''}
         </div>
     `}).join('');
-    feather.replace();
+    if (typeof feather !== "undefined") feather.replace();
 }
 function copyHTML() {
     const html = document.getElementById('htmlOutput');
@@ -1693,7 +1695,7 @@ function showToast(message, type = 'success') {
         <span class="text-sm text-gray-200">${message}</span>
     `;
     document.body.appendChild(toast);
-    feather.replace();
+    if (typeof feather !== "undefined") feather.replace();
 
     requestAnimationFrame(() => toast.classList.add('show'));
     setTimeout(() => {
@@ -2298,7 +2300,7 @@ function renderShotList() {
             ${shot.critical && !have ? '<span class="ml-auto text-xs text-yellow-500 font-medium">CRITICAL</span>' : ''}
         </div>
     `}).join('');
-    feather.replace();
+    if (typeof feather !== "undefined") feather.replace();
 }
 function copyHTML() {
     const html = document.getElementById('htmlOutput');
@@ -2689,7 +2691,7 @@ function showToast(message, type = 'success') {
         <span class="text-sm text-gray-200">${message}</span>
     `;
     document.body.appendChild(toast);
-    feather.replace();
+    if (typeof feather !== "undefined") feather.replace();
 
     requestAnimationFrame(() => toast.classList.add('show'));
     setTimeout(() => {
@@ -3103,7 +3105,7 @@ function renderShotList() {
             ${shot.critical && !have ? '<span class="ml-auto text-xs text-yellow-500 font-medium">CRITICAL</span>' : ''}
         </div>
     `}).join('');
-    feather.replace();
+    if (typeof feather !== "undefined") feather.replace();
 }
 function copyHTML() {
     const html = document.getElementById('htmlOutput');
@@ -3501,7 +3503,7 @@ function showToast(message, type = 'success') {
         <span class="text-sm text-gray-200">${message}</span>
     `;
     document.body.appendChild(toast);
-    feather.replace();
+    if (typeof feather !== "undefined") feather.replace();
 
     requestAnimationFrame(() => toast.classList.add('show'));
     setTimeout(() => {
@@ -4006,7 +4008,7 @@ function renderShotList() {
             ${shot.critical && !have ? '<span class="ml-auto text-xs text-yellow-500 font-medium">CRITICAL</span>' : ''}
         </div>
     `}).join('');
-    feather.replace();
+    if (typeof feather !== "undefined") feather.replace();
 }
 function copyHTML() {
     const html = document.getElementById('htmlOutput');
@@ -4397,7 +4399,7 @@ function showToast(message, type = 'success') {
         <span class="text-sm text-gray-200">${message}</span>
     `;
     document.body.appendChild(toast);
-    feather.replace();
+    if (typeof feather !== "undefined") feather.replace();
 
     requestAnimationFrame(() => toast.classList.add('show'));
     setTimeout(() => {
@@ -4874,7 +4876,7 @@ function renderShotList() {
             ${shot.critical && !have ? '<span class="ml-auto text-xs text-yellow-500 font-medium">CRITICAL</span>' : ''}
         </div>
     `}).join('');
-    feather.replace();
+    if (typeof feather !== "undefined") feather.replace();
 }
 function copyHTML() {
     const html = document.getElementById('htmlOutput');
@@ -5272,7 +5274,7 @@ function showToast(message, type = 'success') {
         <span class="text-sm text-gray-200">${message}</span>
     `;
     document.body.appendChild(toast);
-    feather.replace();
+    if (typeof feather !== "undefined") feather.replace();
 
     requestAnimationFrame(() => toast.classList.add('show'));
     setTimeout(() => {
@@ -5877,7 +5879,7 @@ function renderShotList() {
             ${shot.critical && !have ? '<span class="ml-auto text-xs text-yellow-500 font-medium">CRITICAL</span>' : ''}
         </div>
     `}).join('');
-    feather.replace();
+    if (typeof feather !== "undefined") feather.replace();
 }
 function copyHTML() {
     const html = document.getElementById('htmlOutput');
@@ -6268,7 +6270,7 @@ function showToast(message, type = 'success') {
         <span class="text-sm text-gray-200">${message}</span>
     `;
     document.body.appendChild(toast);
-    feather.replace();
+    if (typeof feather !== "undefined") feather.replace();
 
     requestAnimationFrame(() => toast.classList.add('show'));
     setTimeout(() => {
@@ -6774,7 +6776,7 @@ function renderShotList() {
             ${shot.critical && !have ? '<span class="ml-auto text-xs text-yellow-500 font-medium">CRITICAL</span>' : ''}
         </div>
     `}).join('');
-    feather.replace();
+    if (typeof feather !== "undefined") feather.replace();
 }
 function copyHTML() {
     const html = document.getElementById('htmlOutput');
@@ -7172,7 +7174,7 @@ function showToast(message, type = 'success') {
         <span class="text-sm text-gray-200">${message}</span>
     `;
     document.body.appendChild(toast);
-    feather.replace();
+    if (typeof feather !== "undefined") feather.replace();
 
     requestAnimationFrame(() => toast.classList.add('show'));
     setTimeout(() => {
@@ -7677,7 +7679,7 @@ function renderShotList() {
             ${shot.critical && !have ? '<span class="ml-auto text-xs text-yellow-500 font-medium">CRITICAL</span>' : ''}
         </div>
     `}).join('');
-    feather.replace();
+    if (typeof feather !== "undefined") feather.replace();
 }
 function copyHTML() {
     const html = document.getElementById('htmlOutput');
@@ -8068,7 +8070,7 @@ function showToast(message, type = 'success') {
         <span class="text-sm text-gray-200">${message}</span>
     `;
     document.body.appendChild(toast);
-    feather.replace();
+    if (typeof feather !== "undefined") feather.replace();
 
     requestAnimationFrame(() => toast.classList.add('show'));
     setTimeout(() => {
