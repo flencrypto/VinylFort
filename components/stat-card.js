@@ -20,9 +20,6 @@ class StatCard extends HTMLElement {
     const value = this.getAttribute('value') || '-';
     const trend = this.getAttribute('trend') || '';
 
-    if (!this.shadowRoot) {
-      this.attachShadow({ mode: 'open' });
-    }
     this.shadowRoot.innerHTML = `
       <style>
         :host {
