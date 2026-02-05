@@ -1827,12 +1827,7 @@ function populateFieldsFromCollection(record) {
 
 // Call check on load
 checkCollectionImport();
-
-async function performAnalysis(data) {
-    const { artist, title, catNo, year, cost, goal, market } = data;
-    
-    // Determine currency symbol
-    const currency = market === 'uk' ? '£' : market === 'us' ? '$' : '€';
+: '€';
     
     // Mock comp research results
     const comps = {
@@ -3535,12 +3530,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
- 
-async function performAnalysis(data) {
-    const { artist, title, catNo, year, cost, goal, market } = data;
-    
-    // Determine currency symbol
-    const currency = market === 'uk' ? '£' : market === 'us' ? '$' : '€';
+ : '€';
     
     // Mock comp research results
     const comps = {
@@ -4431,12 +4421,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
- 
-async function performAnalysis(data) {
-    const { artist, title, catNo, year, cost, goal, market } = data;
-    
-    // Determine currency symbol
-    const currency = market === 'uk' ? '£' : market === 'us' ? '$' : '€';
+ : '€';
     
     // Mock comp research results
     const comps = {
@@ -5406,12 +5391,7 @@ function populateFieldsFromCollection(record) {
 
 // Call check on load
 checkCollectionImport();
-
-async function performAnalysis(data) {
-    const { artist, title, catNo, year, cost, goal, market } = data;
-    
-    // Determine currency symbol
-    const currency = market === 'uk' ? '£' : market === 'us' ? '$' : '€';
+: '€';
     
     // Mock comp research results
     const comps = {
@@ -6302,12 +6282,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
- 
-async function performAnalysis(data) {
-    const { artist, title, catNo, year, cost, goal, market } = data;
-    
-    // Determine currency symbol
-    const currency = market === 'uk' ? '£' : market === 'us' ? '$' : '€';
+ : '€';
     
     // Mock comp research results
     const comps = {
@@ -7206,12 +7181,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
- 
-async function performAnalysis(data) {
-    const { artist, title, catNo, year, cost, goal, market } = data;
-    
-    // Determine currency symbol
-    const currency = market === 'uk' ? '£' : market === 'us' ? '$' : '€';
+ : '€';
     
     // Mock comp research results
     const comps = {
