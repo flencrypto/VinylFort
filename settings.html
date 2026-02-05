@@ -66,7 +66,7 @@
                         <div class="relative">
                             <input type="password" id="imgbbKey" placeholder="Get your key from imgbb.com" 
                                 class="w-full px-4 py-3 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm pr-10"
-                                autocomplete="off">
+                                autocomplete="off" aria-label="imgBB API key">
                             <button onclick="toggleImgbbVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
                                 <i data-feather="eye" class="w-5 h-5"></i>
                             </button>
@@ -109,7 +109,7 @@
                         <div class="relative">
                             <input type="password" id="openaiKey" placeholder="sk-..." 
                                 class="w-full px-4 py-3 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm pr-10"
-                                autocomplete="off">
+                                autocomplete="off" aria-label="OpenAI API key">
                             <button onclick="toggleApiVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
                                 <i data-feather="eye" class="w-5 h-5"></i>
                             </button>
@@ -120,7 +120,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm text-gray-400 mb-2">Model</label>
-                            <select id="openaiModel" class="w-full px-4 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm">
+                            <select id="openaiModel" class="w-full px-4 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm" aria-label="OpenAI model">
                                 <option value="gpt-4o">GPT-4o (Recommended)</option>
                                 <option value="gpt-4o-mini">GPT-4o Mini (Faster/Cheaper)</option>
                                 <option value="gpt-4-turbo">GPT-4 Turbo</option>
@@ -129,7 +129,8 @@
                         <div>
                             <label class="block text-sm text-gray-400 mb-2">Max Tokens</label>
                             <input type="number" id="maxTokens" value="2000" min="500" max="4000" step="100"
-                                class="w-full px-4 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm">
+                                class="w-full px-4 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm"
+                                aria-label="Max tokens">
                         </div>
                     </div>
                     <div class="flex items-center justify-between pt-4 border-t border-gray-800">
@@ -169,7 +170,7 @@
                         <div class="relative">
                             <input type="password" id="deepseekKey" placeholder="sk-..." 
                                 class="w-full px-4 py-3 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm pr-10"
-                                autocomplete="off">
+                                autocomplete="off" aria-label="DeepSeek API key">
                             <button onclick="toggleDeepseekVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
                                 <i data-feather="eye" class="w-5 h-5"></i>
                             </button>
@@ -179,7 +180,7 @@
 
                     <div>
                         <label class="block text-sm text-gray-400 mb-2">Model</label>
-                        <select id="deepseekModel" class="w-full px-4 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm">
+                        <select id="deepseekModel" class="w-full px-4 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm" aria-label="DeepSeek model">
                             <option value="deepseek-chat">DeepSeek-V3 (Chat)</option>
                             <option value="deepseek-reasoner">DeepSeek-R1 (Reasoning)</option>
                         </select>
@@ -221,12 +222,14 @@
                         <div>
                             <label class="block text-sm text-gray-400 mb-2">Consumer Key</label>
                             <input type="text" id="discogsKey" placeholder="Your Discogs consumer key" 
-                                class="w-full px-4 py-3 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm">
+                                class="w-full px-4 py-3 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm"
+                                aria-label="Discogs consumer key">
                         </div>
                         <div>
                             <label class="block text-sm text-gray-400 mb-2">Consumer Secret</label>
                             <input type="password" id="discogsSecret" placeholder="Your Discogs consumer secret" 
-                                class="w-full px-4 py-3 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm">
+                                class="w-full px-4 py-3 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm"
+                                aria-label="Discogs consumer secret">
                         </div>
                     </div>
                     <p class="text-xs text-gray-600">Get your API credentials at <a href="https://www.discogs.com/settings/developers" target="_blank" class="text-primary hover:underline">discogs.com/settings/developers</a></p>
@@ -260,7 +263,7 @@
                             <p class="text-sm text-gray-500">Automatically save listing drafts locally</p>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="autoSave" class="sr-only peer" checked>
+                            <input type="checkbox" id="autoSave" class="sr-only peer" checked aria-label="Auto-save listings">
                             <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                         </label>
                     </div>
@@ -271,7 +274,7 @@
                             <p class="text-sm text-gray-500">Always use dark theme</p>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="darkMode" class="sr-only peer" checked>
+                            <input type="checkbox" id="darkMode" class="sr-only peer" checked aria-label="Enable dark mode">
                             <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                         </label>
                     </div>
@@ -583,6 +586,32 @@ function saveOpenAISettings() {
                 showToast('All data cleared', 'success');
             }
         }
+    </script>
+    <!-- ElevenLabs Conversational AI Widget -->
+    <elevenlabs-convai agent-id="agent_9101kgpbsbwkfazrdcnxxddsnk1c"></elevenlabs-convai>
+    <script
+      src="https://unpkg.com/@elevenlabs/convai-widget-embed"
+      async
+      type="text/javascript"
+    ></script>
+    
+    <!-- Widget Configuration Script -->
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const widget = document.querySelector('elevenlabs-convai');
+
+        if (widget) {
+          // Listen for the widget's "call" event to trigger client-side tools
+          widget.addEventListener('elevenlabs-convai:call', (event) => {
+            event.detail.config.clientTools = {
+              // Client tool to redirect to external URLs
+              redirectToExternalURL: ({ url }) => {
+                window.open(url, '_blank', 'noopener,noreferrer');
+              },
+            };
+          });
+        }
+      });
     </script>
 </body>
 </html>

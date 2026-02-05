@@ -54,7 +54,7 @@
                         <i data-feather="download" class="w-4 h-4"></i>
                         Import Backup
                     </button>
-                    <input type="file" id="jsonImportInput" accept=".json" class="hidden" onchange="importCollectionFromJSON(this.files[0])">
+                    <input type="file" id="jsonImportInput" accept=".json" class="hidden" onchange="importCollectionFromJSON(this.files[0])" aria-label="Import collection backup JSON">
                 <button onclick="window.location.href='deals.html'" class="px-4 py-2 bg-surface-light border border-deal/50 text-deal rounded-lg font-medium hover:bg-deal/10 transition-all flex items-center gap-2">
                     <i data-feather="search" class="w-4 h-4"></i>
                     Find Deals
@@ -90,16 +90,17 @@
                     <i data-feather="search" class="w-5 h-5 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2"></i>
                     <input type="text" id="collectionSearch" placeholder="Search artist, title, catalogue number..." 
                         class="w-full pl-10 pr-4 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm"
+                        aria-label="Search collection"
                         oninput="filterCollection()">
                 </div>
                 <div class="flex gap-3">
-                    <select id="statusFilter" onchange="filterCollection()" class="px-4 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm">
+                    <select id="statusFilter" onchange="filterCollection()" class="px-4 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm" aria-label="Filter collection status">
                         <option value="all">All Status</option>
                         <option value="owned">Owned</option>
                         <option value="listed">Listed</option>
                         <option value="sold">Sold</option>
                     </select>
-                    <select id="sortBy" onchange="sortCollection()" class="px-4 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm">
+                    <select id="sortBy" onchange="sortCollection()" class="px-4 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm" aria-label="Sort collection">
                         <option value="dateAdded">Date Added</option>
                         <option value="artist">Artist A-Z</option>
                         <option value="purchasePrice">Purchase Price</option>
@@ -174,7 +175,7 @@
                                 <i data-feather="file-text" class="w-10 h-10 text-gray-500 mx-auto mb-3"></i>
                                 <p class="text-gray-300 font-medium">Click to select CSV file</p>
                                 <p class="text-xs text-gray-500 mt-1">or drag and drop here</p>
-                                <input type="file" id="csvInput" accept=".csv" class="hidden" onchange="handleCSVUpload(event)">
+                                <input type="file" id="csvInput" accept=".csv" class="hidden" onchange="handleCSVUpload(event)" aria-label="Upload Discogs CSV">
                             </div>
                         </div>
                     </div>
@@ -248,16 +249,16 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-sm text-gray-400 mb-1">Purchase Price (£)</label>
-                                <input type="number" id="verifyPurchasePrice" step="0.01" class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm">
+                                <input type="number" id="verifyPurchasePrice" step="0.01" class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm" aria-label="Purchase price">
                             </div>
                             <div>
                                 <label class="block text-sm text-gray-400 mb-1">Purchase Date</label>
-                                <input type="date" id="verifyPurchaseDate" class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm">
+                                <input type="date" id="verifyPurchaseDate" class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm" aria-label="Purchase date">
                             </div>
                         </div>
                         <div>
                             <label class="block text-sm text-gray-400 mb-1">Purchase Source</label>
-                            <select id="verifySource" class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm">
+                            <select id="verifySource" class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm" aria-label="Source marketplace">
                                 <option value="discogs">Discogs</option>
                                 <option value="ebay">eBay</option>
                                 <option value="record_store">Record Store</option>
@@ -270,7 +271,7 @@
                         <div>
                             <label class="block text-sm text-gray-400 mb-1">Condition (Vinyl/Sleeve)</label>
                             <div class="grid grid-cols-2 gap-3">
-                                <select id="verifyVinylCondition" class="px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm">
+                                <select id="verifyVinylCondition" class="px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm" aria-label="Vinyl condition">
                                     <option value="M">M (Mint)</option>
                                     <option value="NM">NM (Near Mint)</option>
                                     <option value="VG+">VG+ (Very Good Plus)</option>
@@ -280,7 +281,7 @@
                                     <option value="F">F (Fair)</option>
                                     <option value="P">P (Poor)</option>
                                 </select>
-                                <select id="verifySleeveCondition" class="px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm">
+                                <select id="verifySleeveCondition" class="px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm" aria-label="Sleeve condition">
                                     <option value="M">M (Mint)</option>
                                     <option value="NM">NM (Near Mint)</option>
                                     <option value="VG+">VG+ (Very Good Plus)</option>
@@ -294,7 +295,7 @@
                         </div>
                         <div>
                             <label class="block text-sm text-gray-400 mb-1">Notes</label>
-                            <textarea id="verifyNotes" rows="3" class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm resize-none"></textarea>
+                            <textarea id="verifyNotes" rows="3" class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm resize-none" aria-label="Verification notes"></textarea>
                         </div>
                     </div>
                     <!-- Right: Photo Upload -->
@@ -304,7 +305,7 @@
                             <i data-feather="camera" class="w-8 h-8 text-gray-500 mx-auto mb-2"></i>
                             <p class="text-sm text-gray-400">Drop photos or click to browse</p>
                             <p class="text-xs text-gray-600 mt-1">Front, back, labels recommended</p>
-                            <input type="file" id="verifyPhotoInput" multiple accept="image/*" class="hidden" onchange="handleVerifyPhotos(event)">
+                            <input type="file" id="verifyPhotoInput" multiple accept="image/*" class="hidden" onchange="handleVerifyPhotos(event)" aria-label="Upload verification photos">
                         </div>
                         <div id="verifyPhotoGrid" class="grid grid-cols-3 gap-2 mt-3">
                             <!-- Photo previews -->
@@ -337,5 +338,31 @@
     <script src="script.js"></script>
     <script src="collection.js"></script>
     <script>feather.replace();</script>
+    <!-- ElevenLabs Conversational AI Widget -->
+    <elevenlabs-convai agent-id="agent_9101kgpbsbwkfazrdcnxxddsnk1c"></elevenlabs-convai>
+    <script
+      src="https://unpkg.com/@elevenlabs/convai-widget-embed"
+      async
+      type="text/javascript"
+    ></script>
+    
+    <!-- Widget Configuration Script -->
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const widget = document.querySelector('elevenlabs-convai');
+
+        if (widget) {
+          // Listen for the widget's "call" event to trigger client-side tools
+          widget.addEventListener('elevenlabs-convai:call', (event) => {
+            event.detail.config.clientTools = {
+              // Client tool to redirect to external URLs
+              redirectToExternalURL: ({ url }) => {
+                window.open(url, '_blank', 'noopener,noreferrer');
+              },
+            };
+          });
+        }
+      });
+    </script>
 </body>
 </html>

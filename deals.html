@@ -148,13 +148,37 @@
                 </button>
             </div>
             <div class="space-y-4">
+                <div class="mb-2 space-y-2">
+                    <div class="progress-step active">
+                        <div class="step-icon bg-primary text-white">1</div>
+                        <div>
+                            <div class="font-medium text-sm">Add Listings</div>
+                            <div class="text-xs text-gray-500">Paste or upload listings to analyze</div>
+                        </div>
+                    </div>
+                    <div class="progress-step">
+                        <div class="step-icon bg-gray-600 text-gray-400">2</div>
+                        <div>
+                            <div class="font-medium text-sm text-gray-400">Analyze Deals</div>
+                            <div class="text-xs text-gray-600">Estimate profit and ROI</div>
+                        </div>
+                    </div>
+                    <div class="progress-step">
+                        <div class="step-icon bg-gray-600 text-gray-400">3</div>
+                        <div>
+                            <div class="font-medium text-sm text-gray-400">Review Candidates</div>
+                            <div class="text-xs text-gray-600">Open details and confirm</div>
+                        </div>
+                    </div>
+                </div>
                 <div class="relative">
                     <div id="bulkDropZone" class="border-2 border-dashed border-gray-600 rounded-xl p-8 text-center transition-all hover:border-deal hover:bg-deal/5 cursor-pointer">
                         <i data-feather="upload-cloud" class="w-10 h-10 text-gray-500 mx-auto mb-3"></i>
                         <p class="text-gray-300 font-medium mb-2">Drop files here or paste text below</p>
                         <p class="text-sm text-gray-500 mb-4">Supports: CSV files, text files with URLs, or paste listings directly</p>
                         <textarea id="bulkInput" rows="4" placeholder="Paste seller listings, marketplace URLs, or record details (one per line)... &#10;Example:&#10;Pink Floyd - Dark Side of the Moon - £15&#10;The Beatles - Abbey Road VG+ - £25&#10;https://www.discogs.com/sell/item/123456"
-                            class="w-full px-4 py-3 bg-surface border border-gray-700 rounded-lg focus:border-deal focus:outline-none text-sm font-mono resize-y text-left"></textarea>
+                            class="w-full px-4 py-3 bg-surface border border-gray-700 rounded-lg focus:border-deal focus:outline-none text-sm font-mono resize-y text-left"
+                            aria-label="Bulk deal input"></textarea>
                     </div>
                 </div>
                 <div class="flex gap-3">
@@ -252,5 +276,31 @@
     <script src="script.js"></script>
     <script src="deals.js"></script>
     <script>feather.replace();</script>
+    <!-- ElevenLabs Conversational AI Widget -->
+    <elevenlabs-convai agent-id="agent_9101kgpbsbwkfazrdcnxxddsnk1c"></elevenlabs-convai>
+    <script
+      src="https://unpkg.com/@elevenlabs/convai-widget-embed"
+      async
+      type="text/javascript"
+    ></script>
+    
+    <!-- Widget Configuration Script -->
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const widget = document.querySelector('elevenlabs-convai');
+
+        if (widget) {
+          // Listen for the widget's "call" event to trigger client-side tools
+          widget.addEventListener('elevenlabs-convai:call', (event) => {
+            event.detail.config.clientTools = {
+              // Client tool to redirect to external URLs
+              redirectToExternalURL: ({ url }) => {
+                window.open(url, '_blank', 'noopener,noreferrer');
+              },
+            };
+          });
+        }
+      });
+    </script>
 </body>
 </html>
