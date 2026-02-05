@@ -222,6 +222,21 @@
         </div>
     </div>
 
+    <!-- Auto-Buy Confirmation Modal -->
+    <div id="autoBuyModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-surface-light rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-800">
+            <div class="p-6 border-b border-gray-800 flex items-center justify-between">
+                <h2 class="text-xl font-semibold">Auto-Buy Confirmation</h2>
+                <button onclick="closeAutoBuyModal()" class="text-gray-400 hover:text-white">
+                    <i data-feather="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div id="autoBuyModalContent" class="p-6">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
     <vinyl-footer></vinyl-footer>
 

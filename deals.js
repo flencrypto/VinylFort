@@ -4,7 +4,42 @@
 // Initialize drag and drop for bulk deals
 document.addEventListener('DOMContentLoaded', () => {
     initBulkDropZone();
+    initAutoBuyDefaults();
 });
+
+const AUTO_BUY_DEFAULTS = {
+    enabled: true,
+    mode: 'confirm',
+    minRoi: 40,
+    minProfit: 8,
+    maxPrice: 100,
+    minCondition: 'VG+'
+};
+
+function getAutoBuyConfig() {
+    const stored = JSON.parse(localStorage.getItem('auto_buy_config') || '{}');
+    return { ...AUTO_BUY_DEFAULTS, ...stored };
+}
+
+function initAutoBuyDefaults() {
+    if (!localStorage.getItem('auto_buy_config')) {
+        localStorage.setItem('auto_buy_config', JSON.stringify(AUTO_BUY_DEFAULTS));
+    }
+}
+
+function getConditionRank(condition) {
+    const order = ['P', 'F', 'G', 'G+', 'VG', 'VG+', 'NM', 'M'];
+    const idx = order.indexOf((condition || '').toUpperCase());
+    return idx === -1 ? 0 : idx;
+}
+
+function shouldTriggerAutoBuy(deal, config) {
+    if (!config.enabled) return false;
+    const roi = parseFloat(deal.roi);
+    const conditionOk = getConditionRank(deal.condition) >= getConditionRank(config.minCondition);
+    const priceOk = deal.price <= config.maxPrice;
+    return conditionOk && priceOk && roi >= config.minRoi && deal.netProfit >= config.minProfit;
+}
 
 function initBulkDropZone() {
     const dropZone = document.getElementById('bulkDropZone');
@@ -434,6 +469,9 @@ function renderDealsResults(results) {
     
     // Store for detail view
     window.analyzedDeals = results;
+
+    // Evaluate auto-buy candidates (confirm mode)
+    evaluateAutoBuyCandidates(results);
 }
 
 function showDealDetail(index) {
@@ -507,6 +545,87 @@ function showDealDetail(index) {
 function closeDealModal() {
     document.getElementById('dealModal').classList.add('hidden');
     document.getElementById('dealModal').classList.remove('flex');
+}
+
+function evaluateAutoBuyCandidates(results) {
+    const config = getAutoBuyConfig();
+    if (!config.enabled || config.mode !== 'confirm') return;
+
+    const candidates = results.filter(deal => shouldTriggerAutoBuy(deal, config));
+    if (!candidates.length) return;
+
+    window.autoBuyCandidates = candidates;
+    showToast(`Auto-buy candidates found: ${candidates.length}`, 'warning');
+    showAutoBuyModal(0);
+}
+
+function showAutoBuyModal(index) {
+    const candidates = window.autoBuyCandidates || [];
+    const deal = candidates[index];
+    const modal = document.getElementById('autoBuyModal');
+    const content = document.getElementById('autoBuyModalContent');
+    if (!deal || !modal || !content) return;
+
+    content.innerHTML = `
+        <div class="space-y-4">
+            <div class="p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/10">
+                <h3 class="text-lg font-bold mb-1">Confirm Auto-Buy</h3>
+                <p class="text-gray-400 text-sm">This meets your thresholds. Review before purchase.</p>
+            </div>
+            <div class="p-4 bg-surface rounded-lg">
+                <p class="text-sm text-gray-500 mb-1">Artist / Title</p>
+                <p class="text-lg font-semibold">${deal.artist} — ${deal.title}</p>
+                <p class="text-sm text-gray-500 mt-2">Condition: ${deal.condition}</p>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="p-4 bg-surface rounded-lg">
+                    <p class="text-xs text-gray-500 mb-1">Buy Price</p>
+                    <p class="text-xl font-bold">£${deal.price.toFixed(2)}</p>
+                </div>
+                <div class="p-4 bg-surface rounded-lg">
+                    <p class="text-xs text-gray-500 mb-1">ROI</p>
+                    <p class="text-xl font-bold text-profit">${deal.roi}%</p>
+                </div>
+                <div class="p-4 bg-surface rounded-lg">
+                    <p class="text-xs text-gray-500 mb-1">Net Profit</p>
+                    <p class="text-xl font-bold ${deal.netProfit >= 0 ? 'text-profit' : 'text-loss'}">£${deal.netProfit}</p>
+                </div>
+                <div class="p-4 bg-surface rounded-lg">
+                    <p class="text-xs text-gray-500 mb-1">Est. Value</p>
+                    <p class="text-xl font-bold">£${deal.adjustedValue}</p>
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="confirmAutoBuy(${index})" class="flex-1 px-4 py-3 bg-gradient-to-r from-deal to-pink-600 rounded-lg font-medium hover:shadow-lg transition-all">
+                    Confirm Auto-Buy
+                </button>
+                <button onclick="closeAutoBuyModal()" class="px-4 py-3 border border-gray-600 rounded-lg hover:border-gray-500 transition-all">
+                    Cancel
+                </button>
+            </div>
+            <p class="text-xs text-gray-500">Note: This is a confirmation hook only. Actual eBay purchasing will be wired once your API credentials are connected.</p>
+        </div>
+    `;
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeAutoBuyModal() {
+    const modal = document.getElementById('autoBuyModal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function confirmAutoBuy(index) {
+    const candidates = window.autoBuyCandidates || [];
+    const deal = candidates[index];
+    if (!deal) return;
+
+    console.log('Auto-buy confirmed (hook):', deal);
+    showToast('Auto-buy confirmed (hook only). Waiting for eBay API wiring.', 'success');
+    closeAutoBuyModal();
 }
 function addDealToCollection(index) {
     const deal = window.analyzedDeals[index];

@@ -421,16 +421,22 @@ async function analyzePhotosWithOCR() {
         stopAnalysisProgress();
 populateFieldsFromOCR(result);
         
-        // Try to fetch additional data from Discogs if available
+        // Try to fetch additional data from Discogs with pressing-aware matching
         if (result.artist && result.title && window.discogsService) {
             try {
-                const discogsData = await window.discogsService.searchRelease(
-                    result.artist, 
-                    result.title, 
-                    result.catalogueNumber
-                );
-                if (discogsData) {
-                    populateFieldsFromDiscogs(discogsData);
+                const match = await window.discogsService.matchReleaseFromOcr(result);
+                if (match?.release) {
+                    populateFieldsFromDiscogs(match.release);
+                    updateDiscogsMatchPanel(match);
+                } else {
+                    const discogsData = await window.discogsService.searchRelease(
+                        result.artist, 
+                        result.title, 
+                        result.catalogueNumber
+                    );
+                    if (discogsData) {
+                        populateFieldsFromDiscogs(discogsData);
+                    }
                 }
             } catch (e) {
                 console.log('Discogs lookup failed:', e);
@@ -532,6 +538,14 @@ function populateFieldsFromOCR(data) {
     if (data.pressingInfo) window.detectedPressingInfo = data.pressingInfo;
     if (data.conditionEstimate) window.detectedCondition = data.conditionEstimate;
     if (data.notes) window.detectedNotes = data.notes;
+    if (data.barcode) window.detectedBarcode = data.barcode;
+    if (data.matrixRunoutA) window.detectedMatrixRunoutA = data.matrixRunoutA;
+    if (data.matrixRunoutB) window.detectedMatrixRunoutB = data.matrixRunoutB;
+    if (data.labelCode) window.detectedLabelCode = data.labelCode;
+    if (data.rightsSociety) window.detectedRightsSociety = data.rightsSociety;
+    if (data.pressingPlant) window.detectedPressingPlant = data.pressingPlant;
+    if (data.labelRimText) window.detectedLabelRimText = data.labelRimText;
+    if (data.identifierStrings) window.detectedIdentifierStrings = data.identifierStrings;
     // Store pressing identification data
     if (data.pressingType) window.detectedPressingType = data.pressingType;
     if (data.isFirstPress) window.detectedIsFirstPress = data.isFirstPress;
@@ -585,6 +599,13 @@ function updateDetectedInfoPanel(data) {
     if (data.genre && data.genre !== 'null') infoItems.push(`<span class="text-green-400">Genre:</span> ${data.genre}`);
     if (data.conditionEstimate && data.conditionEstimate !== 'null') infoItems.push(`<span class="text-green-400">Est. Condition:</span> ${data.conditionEstimate}`);
     if (data.pressingInfo && data.pressingInfo !== 'null') infoItems.push(`<span class="text-green-400">Matrix:</span> ${data.pressingInfo}`);
+    if (data.matrixRunoutA && data.matrixRunoutA !== 'null') infoItems.push(`<span class="text-green-400">Matrix A:</span> ${data.matrixRunoutA}`);
+    if (data.matrixRunoutB && data.matrixRunoutB !== 'null') infoItems.push(`<span class="text-green-400">Matrix B:</span> ${data.matrixRunoutB}`);
+    if (data.barcode && data.barcode !== 'null') infoItems.push(`<span class="text-green-400">Barcode:</span> ${data.barcode}`);
+    if (data.labelCode && data.labelCode !== 'null') infoItems.push(`<span class="text-green-400">Label Code:</span> ${data.labelCode}`);
+    if (data.rightsSociety && data.rightsSociety !== 'null') infoItems.push(`<span class="text-green-400">Rights Society:</span> ${data.rightsSociety}`);
+    if (data.pressingPlant && data.pressingPlant !== 'null') infoItems.push(`<span class="text-green-400">Pressing Plant:</span> ${data.pressingPlant}`);
+    if (data.labelRimText && data.labelRimText !== 'null') infoItems.push(`<span class="text-green-400">Label Rim:</span> ${data.labelRimText}`);
     
     // Add pressing identification info
     if (data.isFirstPress !== undefined) {
@@ -626,6 +647,51 @@ function updateDetectedInfoPanel(data) {
                 </ul>
             </div>
         ` : ''}
+        ${data.identifierStrings?.length ? `
+            <div class="mt-2 pt-2 border-t border-green-500/20">
+                <p class="text-xs text-gray-400 mb-1">Identifiers found:</p>
+                <ul class="text-xs text-gray-500 list-disc list-inside">
+                    ${data.identifierStrings.map(n => `<li>${n}</li>`).join('')}
+                </ul>
+            </div>
+        ` : ''}
+    `;
+    feather.replace();
+}
+
+function updateDiscogsMatchPanel(match) {
+    if (!match?.release) return;
+
+    let panel = document.getElementById('discogsMatchPanel');
+    const parent = document.querySelector('#dropZone')?.parentNode;
+    if (!parent) return;
+
+    if (!panel) {
+        panel = document.createElement('div');
+        panel.id = 'discogsMatchPanel';
+        parent.appendChild(panel);
+    }
+
+    const confidenceColor = match.confidence === 'high' ? 'text-green-400' :
+        match.confidence === 'medium' ? 'text-yellow-400' : 'text-orange-400';
+
+    const evidenceList = match.evidence?.length
+        ? `<ul class="text-xs text-gray-400 list-disc list-inside">
+                ${match.evidence.map(item => `<li>${item}</li>`).join('')}
+           </ul>`
+        : '<p class="text-xs text-gray-500">No strong identifiers matched. Verify manually.</p>';
+
+    panel.className = 'mt-3 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg';
+    panel.innerHTML = `
+        <div class="flex items-center gap-2 mb-2">
+            <i data-feather="disc" class="w-4 h-4 ${confidenceColor}"></i>
+            <span class="text-sm font-medium ${confidenceColor}">Discogs Match (${match.confidence} confidence)</span>
+        </div>
+        <div class="text-xs text-gray-400 mb-2">Match score: ${match.score}</div>
+        ${evidenceList}
+        <div class="mt-2 pt-2 border-t border-blue-500/20">
+            <a href="https://www.discogs.com/release/${match.release.id}" target="_blank" class="text-xs text-blue-400 hover:underline">View matched release →</a>
+        </div>
     `;
     feather.replace();
 }
