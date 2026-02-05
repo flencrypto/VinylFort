@@ -17,11 +17,227 @@
     background: #475569;
 }
 
-/* Smooth transitions */
-* {
-    transition-property: color, background-color, border-color, box-shadow;
-    transition-duration: 150ms;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+/* Mobile Optimizations */
+@media (max-width: 640px) {
+    .glass-dark {
+        backdrop-filter: blur(10px); /* Reduce blur on mobile for performance */
+    }
+    
+    .particles::before {
+        display: none; /* Disable particles on mobile for performance */
+    }
+    
+    /* Larger touch targets */
+    button, .photo-thumb .remove-btn, .title-option {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    /* Better spacing on mobile */
+    .grid.grid-cols-3 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.5rem;
+    }
+    
+    /* Stack buttons vertically on small screens */
+    .flex.flex-wrap.gap-3 {
+        flex-direction: column;
+    }
+    
+    .flex.flex-wrap.gap-3 > * {
+        width: 100%;
+    }
+}
+
+/* Touch-friendly interactions */
+@media (hover: none) and (pointer: coarse) {
+    /* Remove hover effects on touch devices */
+    .hover\\:neon-glow:hover {
+        box-shadow: none;
+    }
+    
+    .hover\\:bg-primary\\/20:hover {
+        background-color: transparent;
+    }
+    
+    /* Add active states for touch */
+    .title-option:active {
+        transform: scale(0.98);
+    }
+    
+    button:active {
+        transform: scale(0.95);
+    }
+}
+
+/* Reduced motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    
+    .animate-spin {
+        animation: none;
+    }
+    
+    .particles::before {
+        animation: none;
+    }
+}
+
+/* Button Loading States */
+.btn-loading {
+    position: relative;
+    color: transparent !important;
+}
+
+.btn-loading::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin-left: -8px;
+    margin-top: -8px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+}
+
+/* Enhanced Form States */
+input:focus, select:focus, textarea:focus {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
+}
+
+input:invalid, select:invalid {
+    border-color: #ef4444;
+}
+
+input:invalid:focus, select:invalid:focus {
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+/* Success States */
+.input-success {
+    border-color: #22c55e !important;
+    background-color: rgba(34, 197, 94, 0.05) !important;
+}
+
+/* Error States */
+.input-error {
+    border-color: #ef4444 !important;
+    background-color: rgba(239, 68, 68, 0.05) !important;
+}
+
+/* Tooltip System */
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip .tooltip-text {
+    visibility: hidden;
+    width: 200px;
+    background-color: #1e293b;
+    color: #e2e8f0;
+    text-align: center;
+    border-radius: 6px;
+    padding: 8px 12px;
+    position: absolute;
+    z-index: 1000;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -100px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    border: 1px solid #334155;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+.tooltip .tooltip-text::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #1e293b transparent transparent transparent;
+}
+
+.tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Help indicators */
+.help-indicator {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: rgba(6, 182, 212, 0.2);
+    color: #06b6d4;
+    text-align: center;
+    font-size: 10px;
+    font-weight: bold;
+    line-height: 16px;
+    margin-left: 4px;
+    cursor: help;
+    transition: all 0.2s ease;
+}
+
+.help-indicator:hover {
+    background: #06b6d4;
+    color: white;
+    transform: scale(1.1);
+}
+
+/* Progress indicators */
+.progress-step {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: rgba(15, 23, 42, 0.5);
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.progress-step.completed {
+    background: rgba(34, 197, 94, 0.1);
+    border-color: #22c55e;
+}
+
+.progress-step.active {
+    background: rgba(124, 58, 237, 0.1);
+    border-color: #7c3aed;
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(124, 58, 237, 0); }
+}
+
+.progress-step .step-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
 }
 
 /* Drag and drop states */

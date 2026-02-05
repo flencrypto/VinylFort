@@ -1,9 +1,143 @@
 
-// Global state
-let uploadedPhotos = [];
-let hostedPhotoUrls = [];
-let currentAnalysis = null;
-let detectedPhotoTypes = new Set();
+// Enhanced UX Functions
+
+// Update progress steps
+function updateProgressSteps(currentStep) {
+    const steps = ['step1', 'step2', 'step3'];
+    steps.forEach((stepId, index) => {
+        const step = document.getElementById(stepId);
+        const stepIcon = step.querySelector('.step-icon');
+        
+        step.classList.remove('active', 'completed');
+        
+        if (index + 1 < currentStep) {
+            step.classList.add('completed');
+            stepIcon.className = 'step-icon bg-green-500 text-white';
+            stepIcon.textContent = '✓';
+        } else if (index + 1 === currentStep) {
+            step.classList.add('active');
+            stepIcon.className = 'step-icon bg-primary text-white';
+            stepIcon.textContent = index + 1;
+        } else {
+            stepIcon.className = 'step-icon bg-gray-600 text-gray-400';
+            stepIcon.textContent = index + 1;
+        }
+    });
+}
+
+// Enhanced form validation
+function validateForm() {
+    const requiredFields = ['artistInput', 'titleInput'];
+    let isValid = true;
+    
+    requiredFields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        const value = field.value.trim();
+        
+        if (!value) {
+            field.classList.add('input-error');
+            field.classList.remove('input-success');
+            isValid = false;
+        } else {
+            field.classList.remove('input-error');
+            field.classList.add('input-success');
+        }
+    });
+    
+    return isValid;
+}
+
+// Enhanced button loading states
+function setButtonLoading(buttonId, loading) {
+    const button = document.getElementById(buttonId);
+    const textSpan = button.querySelector('span');
+    const spinner = button.querySelector('.animate-spin');
+    
+    if (loading) {
+        button.disabled = true;
+        button.classList.add('btn-loading');
+        textSpan.textContent = 'Processing...';
+        if (spinner) spinner.classList.remove('hidden');
+    } else {
+        button.disabled = false;
+        button.classList.remove('btn-loading');
+        textSpan.textContent = buttonId === 'generateListingBtn' ? 'Generate Full Listing' : 'Quick Preview';
+        if (spinner) spinner.classList.add('hidden');
+    }
+}
+
+// Enhanced toast notifications
+function showToast(message, type = 'info', duration = 4000) {
+    const toastContainer = document.getElementById('toastContainer') || createToastContainer();
+    
+    const toast = document.createElement('div');
+    toast.className = `toast ${type} fixed bottom-4 right-4 z-50`;
+    toast.innerHTML = `
+        <div class="flex items-center gap-3">
+            <i data-feather="${getToastIcon(type)}" class="w-5 h-5"></i>
+            <span class="text-sm">${message}</span>
+            <button onclick="this.parentElement.parentElement.remove()" class="ml-2 text-gray-400 hover:text-white">
+                <i data-feather="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    feather.replace();
+    
+    // Animate in
+    requestAnimationFrame(() => toast.classList.add('show'));
+    
+    // Auto remove
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
+function getToastIcon(type) {
+    const icons = {
+        success: 'check-circle',
+        error: 'alert-circle',
+        warning: 'alert-triangle',
+        info: 'info'
+    };
+    return icons[type] || 'info';
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'fixed bottom-4 right-4 z-50 space-y-2';
+    document.body.appendChild(container);
+    return container;
+}
+
+// Simulate analysis with progress updates
+async function simulateAnalysis() {
+    const stages = [
+        { text: 'Analyzing images...', percent: 25 },
+        { text: 'Extracting text...', percent: 50 },
+        { text: 'Identifying record...', percent: 75 },
+        { text: 'Generating listing...', percent: 100 }
+    ];
+    
+    for (const stage of stages) {
+        updateAnalysisProgress(stage.percent, stage.text);
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+}
+
+// Update analysis progress
+function updateAnalysisProgress(percent, stageText) {
+    const bar = document.getElementById('analysisBar');
+    const percentText = document.getElementById('analysisPercent');
+    const stageTextEl = document.getElementById('analysisStageText');
+    
+    if (bar) bar.style.width = `${percent}%`;
+    if (percentText) percentText.textContent = `${percent}%`;
+    if (stageTextEl) stageTextEl.textContent = stageText;
+}
 
 // DOM Elements
 const dropZone = document.getElementById('dropZone');
@@ -42,13 +176,13 @@ function initDropZone() {
     dz.addEventListener('dragenter', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        dz.classList.add('drag-over');
+        updateDropZoneState('dragover');
     });
 
     dz.addEventListener('dragover', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        dz.classList.add('drag-over');
+        updateDropZoneState('dragover');
     });
 
     // Drag leave - remove visual feedback
@@ -57,7 +191,7 @@ function initDropZone() {
         e.stopPropagation();
         // Only remove if we're actually leaving the dropzone, not entering a child
         if (!dz.contains(e.relatedTarget)) {
-            dz.classList.remove('drag-over');
+            updateDropZoneState('default');
         }
     });
 
@@ -65,11 +199,13 @@ function initDropZone() {
     dz.addEventListener('drop', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        dz.classList.remove('drag-over');
+        updateDropZoneState('default');
         
         const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
         if (files.length > 0) {
+            updateProgressSteps(2);
             addPhotos(files);
+            showToast(`Successfully added ${files.length} photo${files.length > 1 ? 's' : ''}`, 'success');
         } else {
             showToast('Please drop image files only', 'warning');
         }
@@ -79,7 +215,9 @@ function initDropZone() {
     pInput.addEventListener('change', (e) => {
         const files = Array.from(e.target.files);
         if (files.length > 0) {
+            updateProgressSteps(2);
             addPhotos(files);
+            showToast(`Successfully added ${files.length} photo${files.length > 1 ? 's' : ''}`, 'success');
             // Reset input so same files can be selected again
             pInput.value = '';
         }
@@ -744,27 +882,47 @@ async function fetchDiscogsData(artist, title, catNo) {
 
 // Generate listing analysis
 async function generateListing() {
-    const artist = document.getElementById('artistInput').value.trim();
-    const title = document.getElementById('titleInput').value.trim();
-    const catNo = document.getElementById('catInput').value.trim();
-    const year = document.getElementById('yearInput').value.trim();
-    const cost = parseFloat(document.getElementById('costInput').value) || 0;
-    const goal = document.getElementById('goalSelect').value;
-    const market = document.getElementById('marketSelect').value;
-
-    // Validation
+    // Validate form
+    if (!validateForm()) {
+        showToast('Please fill in the required fields (Artist and Title)', 'error');
+        return;
+    }
+    
     if (uploadedPhotos.length === 0) {
         showToast('Please upload at least one photo', 'error');
         return;
     }
 
-    // Simulate analysis delay
-    dropZone.classList.add('analyzing');
+    // Set loading state
+    setButtonLoading('generateListingBtn', true);
+    updateProgressSteps(3);
     
-    setTimeout(() => {
+    try {
+        const artist = document.getElementById('artistInput').value.trim();
+        const title = document.getElementById('titleInput').value.trim();
+        const catNo = document.getElementById('catInput').value.trim();
+        const year = document.getElementById('yearInput').value.trim();
+        const cost = parseFloat(document.getElementById('costInput').value) || 0;
+        const goal = document.getElementById('goalSelect').value;
+        const market = document.getElementById('marketSelect').value;
+
+        // Show analysis state
+        dropZone.classList.add('analyzing');
+        showToast('Analyzing your record...', 'info');
+        
+        // Simulate analysis delay with progress updates
+        await simulateAnalysis();
+        
         dropZone.classList.remove('analyzing');
         performAnalysis({ artist, title, catNo, year, cost, goal, market });
-    }, 1500);
+        
+        showToast('Listing generated successfully!', 'success');
+    } catch (error) {
+        console.error('Generation error:', error);
+        showToast('Failed to generate listing. Please try again.', 'error');
+    } finally {
+        setButtonLoading('generateListingBtn', false);
+    }
 }
 async function performAnalysis(data) {
     const { artist, title, catNo, year, cost, goal, market } = data;
