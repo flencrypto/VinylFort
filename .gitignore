@@ -1,0 +1,24 @@
+# Temporary files
+*.log
+*.tmp
+*~
+.DS_Store
+Thumbs.db
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Node modules (if added in future)
+node_modules/
+
+# Build directories (if added in future)
+dist/
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
