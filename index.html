@@ -421,5 +421,31 @@
     <script src="script.js"></script>
 <script>feather.replace();</script>
 <script src="https://huggingface.co/deepsite/deepsite-badge.js"></script>
+    <!-- ElevenLabs Conversational AI Widget -->
+    <elevenlabs-convai agent-id="agent_9101kgpbsbwkfazrdcnxxddsnk1c"></elevenlabs-convai>
+    <script
+      src="https://unpkg.com/@elevenlabs/convai-widget-embed"
+      async
+      type="text/javascript"
+    ></script>
+    
+    <!-- Widget Configuration Script -->
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const widget = document.querySelector('elevenlabs-convai');
+
+        if (widget) {
+          // Listen for the widget's "call" event to trigger client-side tools
+          widget.addEventListener('elevenlabs-convai:call', (event) => {
+            event.detail.config.clientTools = {
+              // Client tool to redirect to external URLs
+              redirectToExternalURL: ({ url }) => {
+                window.open(url, '_blank', 'noopener,noreferrer');
+              },
+            };
+          });
+        }
+      });
+    </script>
 </body>
 </html>
