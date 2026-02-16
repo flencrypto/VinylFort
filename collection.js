@@ -530,10 +530,9 @@ async function extractMarketData(releaseDetails, record) {
     let lastSold = [];
     try {
         const marketplaceResponse = await fetch(
-            `https://api.discogs.com/marketplace/listings?release_id=${releaseDetails.id}&per_page=10`,
+            `https://api.discogs.com/marketplace/listings?release_id=${releaseDetails.id}&per_page=10&key=${window.discogsService.key}&secret=${window.discogsService.secret}`,
             {
                 headers: {
-                    'Authorization': `Discogs key=${window.discogsService.key}, secret=${window.discogsService.secret}`,
                     'User-Agent': 'VinylVaultPro/1.0'
                 }
             }

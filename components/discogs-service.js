@@ -16,9 +16,8 @@ class DiscogsService {
       throw new Error('Discogs API credentials not configured');
     }
 
-    const response = await fetch(`${this.baseUrl}/database/search?q=test&per_page=1`, {
+    const response = await fetch(`${this.baseUrl}/database/search?q=test&per_page=1&key=${this.key}&secret=${this.secret}`, {
       headers: {
-        'Authorization': `Discogs key=${this.key}, secret=${this.secret}`,
         'User-Agent': this.userAgent
       }
     });
@@ -40,10 +39,9 @@ class DiscogsService {
     if (catNo) query += (query ? ' ' : '') + catNo;
 
     const response = await fetch(
-      `${this.baseUrl}/database/search?q=${encodeURIComponent(query)}&type=release&per_page=5`, 
+      `${this.baseUrl}/database/search?q=${encodeURIComponent(query)}&type=release&per_page=5&key=${this.key}&secret=${this.secret}`, 
       {
         headers: {
-          'Authorization': `Discogs key=${this.key}, secret=${this.secret}`,
           'User-Agent': this.userAgent
         }
       }
@@ -64,10 +62,9 @@ class DiscogsService {
     if (catNo) query += (query ? ' ' : '') + catNo;
 
     const response = await fetch(
-      `${this.baseUrl}/database/search?q=${encodeURIComponent(query)}&type=release&per_page=${limit}`,
+      `${this.baseUrl}/database/search?q=${encodeURIComponent(query)}&type=release&per_page=${limit}&key=${this.key}&secret=${this.secret}`,
       {
         headers: {
-          'Authorization': `Discogs key=${this.key}, secret=${this.secret}`,
           'User-Agent': this.userAgent
         }
       }
@@ -81,9 +78,8 @@ class DiscogsService {
   async getReleaseDetails(releaseId) {
     if (!this.key || !this.secret) return null;
 
-    const response = await fetch(`${this.baseUrl}/releases/${releaseId}`, {
+    const response = await fetch(`${this.baseUrl}/releases/${releaseId}?key=${this.key}&secret=${this.secret}`, {
       headers: {
-        'Authorization': `Discogs key=${this.key}, secret=${this.secret}`,
         'User-Agent': this.userAgent
       }
     });
@@ -123,9 +119,8 @@ class DiscogsService {
     if (!this.key || !this.secret || !masterId) return null;
     
     try {
-      const response = await fetch(`${this.baseUrl}/masters/${masterId}`, {
+      const response = await fetch(`${this.baseUrl}/masters/${masterId}?key=${this.key}&secret=${this.secret}`, {
         headers: {
-          'Authorization': `Discogs key=${this.key}, secret=${this.secret}`,
           'User-Agent': this.userAgent
         }
       });
@@ -143,10 +138,9 @@ class DiscogsService {
     
     try {
       const response = await fetch(
-        `${this.baseUrl}/database/search?barcode=${encodeURIComponent(barcode)}&type=release&per_page=5`,
+        `${this.baseUrl}/database/search?barcode=${encodeURIComponent(barcode)}&type=release&per_page=5&key=${this.key}&secret=${this.secret}`,
         {
           headers: {
-            'Authorization': `Discogs key=${this.key}, secret=${this.secret}`,
             'User-Agent': this.userAgent
           }
         }
