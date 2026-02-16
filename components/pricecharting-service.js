@@ -50,10 +50,9 @@ class PriceChartingService {
       if (catalogNumber) query += ` ${catalogNumber}`;
       
       const searchResponse = await fetch(
-        `https://api.discogs.com/database/search?q=${encodeURIComponent(query)}&type=release&per_page=10`,
+        `https://api.discogs.com/database/search?q=${encodeURIComponent(query)}&type=release&per_page=10&key=${window.discogsService.key}&secret=${window.discogsService.secret}`,
         {
           headers: {
-            'Authorization': `Discogs key=${window.discogsService.key}, secret=${window.discogsService.secret}`,
             'User-Agent': 'VinylVaultPro/1.0'
           }
         }
@@ -67,10 +66,9 @@ class PriceChartingService {
       // Get detailed info for top match
       const topMatch = searchData.results[0];
       const detailsResponse = await fetch(
-        `https://api.discogs.com/releases/${topMatch.id}`,
+        `https://api.discogs.com/releases/${topMatch.id}?key=${window.discogsService.key}&secret=${window.discogsService.secret}`,
         {
           headers: {
-            'Authorization': `Discogs key=${window.discogsService.key}, secret=${window.discogsService.secret}`,
             'User-Agent': 'VinylVaultPro/1.0'
           }
         }
@@ -81,10 +79,9 @@ class PriceChartingService {
 
       // Fetch marketplace listings for pricing
       const marketplaceResponse = await fetch(
-        `https://api.discogs.com/marketplace/listings?release_id=${topMatch.id}&per_page=20&sort=price&sort_order=asc`,
+        `https://api.discogs.com/marketplace/listings?release_id=${topMatch.id}&per_page=20&sort=price&sort_order=asc&key=${window.discogsService.key}&secret=${window.discogsService.secret}`,
         {
           headers: {
-            'Authorization': `Discogs key=${window.discogsService.key}, secret=${window.discogsService.secret}`,
             'User-Agent': 'VinylVaultPro/1.0'
           }
         }

@@ -133,3 +133,27 @@ Be precise. Only include info you can clearly read. For pressing identification,
       throw error;
     }
   }
+
+  async fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        // Return clean base64 without data URL prefix for API calls
+        const base64 = reader.result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  updateApiKey(key) {
+    this.apiKey = key;
+  }
+
+  updateModel(model) {
+    this.model = model;
+  }
+}
+
+window.enhancedOcrService = new EnhancedOCRService();
