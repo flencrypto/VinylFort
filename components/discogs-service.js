@@ -15,9 +15,7 @@ class DiscogsService {
   updateCredentials(key, secret, token) {
     this.key = key;
     this.secret = secret;
-    if (token !== undefined) {
-      this.token = token;
-    }
+    this.token = token;
   }
 
   getHeaders() {
