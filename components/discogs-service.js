@@ -72,6 +72,80 @@ class DiscogsService {
     return response;
   }
 
+  async sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  async fetchWithRetry(url, options, maxRetries = 3) {
+    let lastError;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const response = await fetch(url, options);
+        
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After');
+          const waitTime = retryAfter ? parseInt(retryAfter, 10) * 1000 : Math.pow(2, attempt) * 1000;
+          
+          console.warn(`Rate limited. Waiting ${waitTime}ms before retry ${attempt + 1}/${maxRetries}...`);
+          await this.sleep(waitTime);
+          continue;
+        }
+        
+        return response;
+      } catch (error) {
+        lastError = error;
+        if (attempt < maxRetries - 1) {
+          const waitTime = Math.pow(2, attempt) * 1000;
+          console.warn(`Request failed. Retrying in ${waitTime}ms... (${attempt + 1}/${maxRetries})`);
+          await this.sleep(waitTime);
+        }
+      }
+    }
+    
+    throw lastError || new Error('Max retries exceeded');
+  }
+
+  async fetchPaginatedResults(baseUrl, params = {}, maxPages = 5) {
+    const allResults = [];
+    let currentPage = params.page || 1;
+    let hasMorePages = true;
+    
+    while (hasMorePages && currentPage <= maxPages) {
+      const queryParams = new URLSearchParams({
+        ...params,
+        page: currentPage,
+        per_page: params.per_page || 50
+      });
+      
+      try {
+        const response = await this.fetchWithRetry(
+          `${baseUrl}?${queryParams}`,
+          { headers: this.getHeaders() }
+        );
+        
+        await this.handleResponse(response);
+        const data = await response.json();
+        
+        if (data.results) {
+          allResults.push(...data.results);
+        }
+        
+        if (data.pagination) {
+          hasMorePages = currentPage < data.pagination.pages;
+          currentPage++;
+        } else {
+          hasMorePages = false;
+        }
+      } catch (error) {
+        console.error(`Pagination failed at page ${currentPage}:`, error);
+        break;
+      }
+    }
+    
+    return allResults;
+  }
+
   async testConnection() {
     if (!this.key || !this.secret) {
       throw new Error('Discogs API credentials not configured');
@@ -94,7 +168,7 @@ class DiscogsService {
     if (catNo) query += (query ? ' ' : '') + catNo;
 
     try {
-      const response = await fetch(
+      const response = await this.fetchWithRetry(
         `${this.baseUrl}/database/search?q=${encodeURIComponent(query)}&type=release&per_page=5`, 
         {
           headers: this.getHeaders()
@@ -119,7 +193,7 @@ class DiscogsService {
     if (catNo) query += (query ? ' ' : '') + catNo;
 
     try {
-      const response = await fetch(
+      const response = await this.fetchWithRetry(
         `${this.baseUrl}/database/search?q=${encodeURIComponent(query)}&type=release&per_page=${limit}`,
         {
           headers: this.getHeaders()
@@ -138,7 +212,7 @@ class DiscogsService {
     if (!this.key || !this.secret) return null;
 
     try {
-      const response = await fetch(`${this.baseUrl}/releases/${releaseId}`, {
+      const response = await this.fetchWithRetry(`${this.baseUrl}/releases/${releaseId}`, {
         headers: this.getHeaders()
       });
 
@@ -180,7 +254,7 @@ class DiscogsService {
     if (!this.key || !this.secret || !masterId) return null;
     
     try {
-      const response = await fetch(`${this.baseUrl}/masters/${masterId}`, {
+      const response = await this.fetchWithRetry(`${this.baseUrl}/masters/${masterId}`, {
         headers: this.getHeaders()
       });
       
@@ -196,7 +270,7 @@ class DiscogsService {
     if (!this.key || !this.secret || !barcode) return null;
     
     try {
-      const response = await fetch(
+      const response = await this.fetchWithRetry(
         `${this.baseUrl}/database/search?barcode=${encodeURIComponent(barcode)}&type=release&per_page=5`,
         {
           headers: this.getHeaders()
