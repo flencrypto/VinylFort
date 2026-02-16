@@ -3,7 +3,12 @@ class DiscogsService {
     this.key = localStorage.getItem('discogs_key');
     this.secret = localStorage.getItem('discogs_secret');
     this.baseUrl = 'https://api.discogs.com';
-    this.userAgent = 'VinylVaultPro/1.0';
+    this.userAgent = 'VinylVaultPro/1.0 +https://github.com/flencrypto/VinylFort';
+    this.rateLimit = {
+      limit: 60,
+      remaining: 60,
+      used: 0
+    };
   }
 
   updateCredentials(key, secret) {
@@ -11,22 +16,72 @@ class DiscogsService {
     this.secret = secret;
   }
 
+  getHeaders() {
+    const headers = {
+      'User-Agent': this.userAgent,
+      'Accept': 'application/vnd.discogs.v2.plaintext+json'
+    };
+    
+    if (this.key && this.secret) {
+      headers['Authorization'] = `Discogs key=${this.key}, secret=${this.secret}`;
+    }
+    
+    return headers;
+  }
+
+  updateRateLimitFromHeaders(headers) {
+    if (headers.has('X-Discogs-Ratelimit')) {
+      this.rateLimit.limit = parseInt(headers.get('X-Discogs-Ratelimit'), 10);
+    }
+    if (headers.has('X-Discogs-Ratelimit-Used')) {
+      this.rateLimit.used = parseInt(headers.get('X-Discogs-Ratelimit-Used'), 10);
+    }
+    if (headers.has('X-Discogs-Ratelimit-Remaining')) {
+      this.rateLimit.remaining = parseInt(headers.get('X-Discogs-Ratelimit-Remaining'), 10);
+    }
+  }
+
+  async handleResponse(response) {
+    this.updateRateLimitFromHeaders(response.headers);
+
+    if (response.status === 429) {
+      throw new Error('Rate limit exceeded. Please wait before making more requests.');
+    }
+
+    if (response.status === 401) {
+      throw new Error('Unauthorized. Please check your Discogs API credentials.');
+    }
+
+    if (response.status === 403) {
+      throw new Error('Forbidden. You do not have permission to access this resource.');
+    }
+
+    if (response.status === 404) {
+      throw new Error('Resource not found.');
+    }
+
+    if (response.status === 422) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Invalid request parameters.');
+    }
+
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+
+    return response;
+  }
+
   async testConnection() {
     if (!this.key || !this.secret) {
       throw new Error('Discogs API credentials not configured');
     }
 
-    const response = await fetch(`${this.baseUrl}/database/search?q=test&per_page=1&key=${this.key}&secret=${this.secret}`, {
-      headers: {
-        'User-Agent': this.userAgent
-      }
+    const response = await fetch(`${this.baseUrl}/database/search?q=test&per_page=1`, {
+      headers: this.getHeaders()
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Discogs API connection failed');
-    }
-
+    await this.handleResponse(response);
     return true;
   }
 
@@ -38,19 +93,21 @@ class DiscogsService {
     if (title) query += (query ? ' ' : '') + title;
     if (catNo) query += (query ? ' ' : '') + catNo;
 
-    const response = await fetch(
-      `${this.baseUrl}/database/search?q=${encodeURIComponent(query)}&type=release&per_page=5&key=${this.key}&secret=${this.secret}`, 
-      {
-        headers: {
-          'User-Agent': this.userAgent
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/database/search?q=${encodeURIComponent(query)}&type=release&per_page=5`, 
+        {
+          headers: this.getHeaders()
         }
-      }
-    );
+      );
 
-    if (!response.ok) return null;
-
-    const data = await response.json();
-    return data.results?.[0] || null;
+      await this.handleResponse(response);
+      const data = await response.json();
+      return data.results?.[0] || null;
+    } catch (error) {
+      console.error('Search release failed:', error);
+      return null;
+    }
   }
 
   async searchReleaseCandidates(artist, title, catNo, limit = 5) {
@@ -61,32 +118,36 @@ class DiscogsService {
     if (title) query += (query ? ' ' : '') + title;
     if (catNo) query += (query ? ' ' : '') + catNo;
 
-    const response = await fetch(
-      `${this.baseUrl}/database/search?q=${encodeURIComponent(query)}&type=release&per_page=${limit}&key=${this.key}&secret=${this.secret}`,
-      {
-        headers: {
-          'User-Agent': this.userAgent
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/database/search?q=${encodeURIComponent(query)}&type=release&per_page=${limit}`,
+        {
+          headers: this.getHeaders()
         }
-      }
-    );
+      );
 
-    if (!response.ok) return [];
-
-    const data = await response.json();
-    return data.results || [];
+      await this.handleResponse(response);
+      const data = await response.json();
+      return data.results || [];
+    } catch (error) {
+      console.error('Search release candidates failed:', error);
+      return [];
+    }
   }
   async getReleaseDetails(releaseId) {
     if (!this.key || !this.secret) return null;
 
-    const response = await fetch(`${this.baseUrl}/releases/${releaseId}?key=${this.key}&secret=${this.secret}`, {
-      headers: {
-        'User-Agent': this.userAgent
-      }
-    });
+    try {
+      const response = await fetch(`${this.baseUrl}/releases/${releaseId}`, {
+        headers: this.getHeaders()
+      });
 
-    if (!response.ok) return null;
-
-    return await response.json();
+      await this.handleResponse(response);
+      return await response.json();
+    } catch (error) {
+      console.error('Get release details failed:', error);
+      return null;
+    }
   }
 
   async fetchTracklist(releaseId) {
@@ -119,13 +180,11 @@ class DiscogsService {
     if (!this.key || !this.secret || !masterId) return null;
     
     try {
-      const response = await fetch(`${this.baseUrl}/masters/${masterId}?key=${this.key}&secret=${this.secret}`, {
-        headers: {
-          'User-Agent': this.userAgent
-        }
+      const response = await fetch(`${this.baseUrl}/masters/${masterId}`, {
+        headers: this.getHeaders()
       });
       
-      if (!response.ok) return null;
+      await this.handleResponse(response);
       return await response.json();
     } catch (e) {
       console.error('Failed to fetch master details:', e);
@@ -138,15 +197,13 @@ class DiscogsService {
     
     try {
       const response = await fetch(
-        `${this.baseUrl}/database/search?barcode=${encodeURIComponent(barcode)}&type=release&per_page=5&key=${this.key}&secret=${this.secret}`,
+        `${this.baseUrl}/database/search?barcode=${encodeURIComponent(barcode)}&type=release&per_page=5`,
         {
-          headers: {
-            'User-Agent': this.userAgent
-          }
+          headers: this.getHeaders()
         }
       );
       
-      if (!response.ok) return null;
+      await this.handleResponse(response);
       const data = await response.json();
       return data.results || [];
     } catch (e) {
