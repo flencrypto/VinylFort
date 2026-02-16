@@ -142,12 +142,24 @@ function updateAnalysisProgress(percent, stageText) {
 // DOM Elements
 let uploadedPhotos = [];
 let hostedPhotoUrls = [];
+let photoObjectUrls = []; // Track object URLs for cleanup
 const dropZone = document.getElementById('dropZone');
 const photoInput = document.getElementById('photoInput');
 const photoGrid = document.getElementById('photoGrid');
 const resultsSection = document.getElementById('resultsSection');
 const emptyState = document.getElementById('emptyState');
 // Event Listeners - Initialize after DOM is ready
+function updateDropZoneState(state) {
+    const dz = document.getElementById('dropZone');
+    if (!dz) return;
+    
+    if (state === 'dragover') {
+        dz.classList.add('drag-over');
+    } else {
+        dz.classList.remove('drag-over');
+    }
+}
+
 function initDropZone() {
     const dz = document.getElementById('dropZone');
     const pInput = document.getElementById('photoInput');
@@ -274,6 +286,7 @@ async function uploadPhotosToImgBB(files) {
     
     progressContainer.classList.remove('hidden');
     hostedPhotoUrls = []; // Reset hosted URLs
+    let failedCount = 0;
     
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -310,9 +323,11 @@ async function uploadPhotosToImgBB(files) {
                 console.log('Uploaded:', data.data.url);
             } else {
                 console.error('Upload failed:', data.status, data);
+                failedCount++;
             }
         } catch (error) {
             console.error('Upload failed:', error);
+            failedCount++;
         }
         
         const progress = ((i + 1) / files.length) * 100;
@@ -325,6 +340,9 @@ async function uploadPhotosToImgBB(files) {
         if (hostedPhotoUrls.length > 0) {
             showToast(`${hostedPhotoUrls.length} photos uploaded to imgBB`, 'success');
             console.log('Hosted URLs:', hostedPhotoUrls.map(u => ({ url: u.url, deleteUrl: u.deleteUrl })));
+        }
+        if (failedCount > 0) {
+            showToast(`${failedCount} photo${failedCount > 1 ? 's' : ''} failed to upload`, 'error');
         }
     }, 500);
 }
@@ -838,18 +856,29 @@ function updateDiscogsMatchPanel(match) {
 function renderPhotoGrid() {
     if (uploadedPhotos.length === 0) {
         photoGrid.classList.add('hidden');
+        // Revoke all object URLs when clearing grid
+        photoObjectUrls.forEach(url => URL.revokeObjectURL(url));
+        photoObjectUrls = [];
         return;
     }
     
+    // Revoke old object URLs before creating new ones
+    photoObjectUrls.forEach(url => URL.revokeObjectURL(url));
+    photoObjectUrls = [];
+    
     photoGrid.classList.remove('hidden');
-    photoGrid.innerHTML = uploadedPhotos.map((file, idx) => `
+    photoGrid.innerHTML = uploadedPhotos.map((file, idx) => {
+        const objectUrl = URL.createObjectURL(file);
+        photoObjectUrls.push(objectUrl);
+        return `
         <div class="photo-thumb">
-            <img src="${URL.createObjectURL(file)}" alt="Photo ${idx + 1}">
+            <img src="${objectUrl}" alt="Photo ${idx + 1}">
             <button class="remove-btn" onclick="removePhoto(${idx})" title="Remove">
                 <i data-feather="x" class="w-3 h-3"></i>
             </button>
         </div>
-    `).join('');
+    `;
+    }).join('');
     if (typeof feather !== "undefined") feather.replace();
 }
 function removePhoto(idx) {
