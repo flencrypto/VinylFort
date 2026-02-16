@@ -127,8 +127,12 @@ class DiscogsService {
         await this.handleResponse(response);
         const data = await response.json();
         
-        if (data.results) {
+        if (data.results && Array.isArray(data.results)) {
           allResults.push(...data.results);
+        } else {
+          // No valid results structure, stop pagination
+          console.warn('Invalid or missing results structure in response');
+          break;
         }
         
         if (data.pagination) {
