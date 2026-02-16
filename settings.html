@@ -593,15 +593,18 @@ function saveOpenAISettings() {
             const secret = document.getElementById('discogsSecret').value.trim();
 
             if (token) {
-                // Save token-based authentication
+                // Save token-based authentication and clear key/secret
                 localStorage.setItem('discogs_token', token);
+                localStorage.removeItem('discogs_key');
+                localStorage.removeItem('discogs_secret');
                 window.discogsService.updateCredentials('', '', token);
                 updateDiscogsStatus(true);
                 showToast('Discogs settings saved! (using Personal Access Token)', 'success');
             } else if (key && secret) {
-                // Save key/secret authentication
+                // Save key/secret authentication and clear token
                 localStorage.setItem('discogs_key', key);
                 localStorage.setItem('discogs_secret', secret);
+                localStorage.removeItem('discogs_token');
                 window.discogsService.updateCredentials(key, secret, '');
                 updateDiscogsStatus(true);
                 showToast('Discogs settings saved! (using Consumer Key/Secret)', 'success');
