@@ -1,0 +1,22 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    devDependencies:
+      eslint-plugin-security:
+        specifier: file:tools/eslint-plugin-security
+        version: file:tools/eslint-plugin-security
+
+packages:
+
+  eslint-plugin-security@file:tools/eslint-plugin-security:
+    resolution: {directory: tools/eslint-plugin-security, type: directory}
+
+snapshots:
+
+  eslint-plugin-security@file:tools/eslint-plugin-security: {}

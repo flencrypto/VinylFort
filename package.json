@@ -10,10 +10,7 @@
     "format": "prettier --check ."
   },
   "devDependencies": {
-    "eslint": "^9.21.0",
-    "eslint-plugin-security": "^3.0.1",
-    "eslint-plugin-unicorn": "^57.0.0",
-    "prettier": "^3.5.2"
+    "eslint-plugin-security": "file:tools/eslint-plugin-security"
   },
   "engines": {
     "node": ">=20"

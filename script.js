@@ -651,7 +651,7 @@ function populateFieldsFromDiscogs(discogsData) {
             <div class="flex items-center gap-2">
                 <i data-feather="check-circle" class="w-4 h-4 text-orange-400"></i>
                 <span class="text-sm text-orange-400">Matched on Discogs</span>
-                <a href="https://www.discogs.com/release/${discogsData.id}" target="_blank" class="text-xs text-gray-400 hover:text-orange-400 underline">View →</a>
+                <a href="https://www.discogs.com/release/${discogsData.id}" target="_blank" rel="noopener noreferrer" class="text-xs text-gray-400 hover:text-orange-400 underline">View →</a>
             </div>
         `;
         panel.appendChild(discogsBadge);
@@ -848,7 +848,7 @@ function updateDiscogsMatchPanel(match) {
         <div class="text-xs text-gray-400 mb-2">Match score: ${match.score}</div>
         ${evidenceList}
         <div class="mt-2 pt-2 border-t border-blue-500/20">
-            <a href="https://www.discogs.com/release/${match.release.id}" target="_blank" class="text-xs text-blue-400 hover:underline">View matched release →</a>
+            <a href="https://www.discogs.com/release/${match.release.id}" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-400 hover:underline">View matched release →</a>
         </div>
     `;
     if (typeof feather !== "undefined") feather.replace();
