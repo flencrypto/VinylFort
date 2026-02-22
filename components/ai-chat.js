@@ -3,12 +3,14 @@ class AIChat extends HTMLElement {
     super();
     this.messages = [];
     this.corrections = {};
-    this.learningData = JSON.parse(localStorage.getItem('ai_learning_data') || '{}');
+    this.learningData = JSON.parse(
+      localStorage.getItem("ai_learning_data") || "{}",
+    );
   }
 
   connectedCallback() {
     if (!this.shadowRoot) {
-      this.attachShadow({ mode: 'open' });
+      this.attachShadow({ mode: "open" });
     }
     this.render();
     this.setupEventListeners();
@@ -360,59 +362,59 @@ class AIChat extends HTMLElement {
   }
 
   setupEventListeners() {
-    const input = this.shadowRoot.getElementById('chatInput');
-    const sendBtn = this.shadowRoot.getElementById('sendBtn');
-    const quickActions = this.shadowRoot.getElementById('quickActions');
+    const input = this.shadowRoot.getElementById("chatInput");
+    const sendBtn = this.shadowRoot.getElementById("sendBtn");
+    const quickActions = this.shadowRoot.getElementById("quickActions");
 
-    sendBtn.addEventListener('click', () => this.handleSend());
-    input.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') this.handleSend();
+    sendBtn.addEventListener("click", () => this.handleSend());
+    input.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") this.handleSend();
     });
 
-    quickActions.addEventListener('click', (e) => {
-      if (e.target.classList.contains('quick-btn')) {
+    quickActions.addEventListener("click", (e) => {
+      if (e.target.classList.contains("quick-btn")) {
         this.handleQuickAction(e.target.dataset.action);
       }
     });
   }
 
   handleSend() {
-    const input = this.shadowRoot.getElementById('chatInput');
+    const input = this.shadowRoot.getElementById("chatInput");
     const message = input.value.trim();
     if (!message) return;
 
-    this.addMessage(message, 'user');
-    input.value = '';
+    this.addMessage(message, "user");
+    input.value = "";
 
     // Process the message
     this.processUserMessage(message);
   }
 
   handleQuickAction(action) {
-    switch(action) {
-      case 'confirm-all':
+    switch (action) {
+      case "confirm-all":
         this.confirmAllFields();
         break;
-      case 'wrong-artist':
-        this.requestCorrection('artist');
+      case "wrong-artist":
+        this.requestCorrection("artist");
         break;
-      case 'wrong-title':
-        this.requestCorrection('title');
+      case "wrong-title":
+        this.requestCorrection("title");
         break;
-      case 'wrong-year':
-        this.requestCorrection('year');
+      case "wrong-year":
+        this.requestCorrection("year");
         break;
-      case 'wrong-cat':
-        this.requestCorrection('catalogueNumber');
+      case "wrong-cat":
+        this.requestCorrection("catalogueNumber");
         break;
     }
   }
 
   addMessage(text, sender, options = {}) {
-    const messagesArea = this.shadowRoot.getElementById('messagesArea');
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${sender} ${options.isCorrection ? 'correction' : ''}`;
-    
+    const messagesArea = this.shadowRoot.getElementById("messagesArea");
+    const messageDiv = document.createElement("div");
+    messageDiv.className = `message ${sender} ${options.isCorrection ? "correction" : ""}`;
+
     let content = text;
     if (options.field && options.originalValue !== undefined) {
       content += `
@@ -424,78 +426,82 @@ class AIChat extends HTMLElement {
         </div>
       `;
     }
-    
+
     messageDiv.innerHTML = content;
     if (options.meta) {
       messageDiv.innerHTML += `<div class="message-meta">${options.meta}</div>`;
     }
-    
+
     messagesArea.appendChild(messageDiv);
     messagesArea.scrollTop = messagesArea.scrollHeight;
-    
+
     this.messages.push({ sender, text, ...options });
   }
 
   showTyping() {
-    const messagesArea = this.shadowRoot.getElementById('messagesArea');
-    const typingDiv = document.createElement('div');
-    typingDiv.className = 'message ai typing-indicator';
-    typingDiv.id = 'typingIndicator';
-    typingDiv.innerHTML = '<span></span><span></span><span></span>';
+    const messagesArea = this.shadowRoot.getElementById("messagesArea");
+    const typingDiv = document.createElement("div");
+    typingDiv.className = "message ai typing-indicator";
+    typingDiv.id = "typingIndicator";
+    typingDiv.innerHTML = "<span></span><span></span><span></span>";
     messagesArea.appendChild(typingDiv);
     messagesArea.scrollTop = messagesArea.scrollHeight;
-    
-    this.setStatus('thinking');
+
+    this.setStatus("thinking");
   }
 
   hideTyping() {
-    const typing = this.shadowRoot.getElementById('typingIndicator');
+    const typing = this.shadowRoot.getElementById("typingIndicator");
     if (typing) typing.remove();
-    this.setStatus('ready');
+    this.setStatus("ready");
   }
 
   setStatus(status) {
-    const badge = this.shadowRoot.getElementById('statusBadge');
-    badge.className = `status-badge ${status === 'thinking' ? 'thinking' : ''}`;
-    badge.textContent = status === 'thinking' ? 'Analyzing...' : 'Ready';
+    const badge = this.shadowRoot.getElementById("statusBadge");
+    badge.className = `status-badge ${status === "thinking" ? "thinking" : ""}`;
+    badge.textContent = status === "thinking" ? "Analyzing..." : "Ready";
   }
 
   // Called when OCR results come in
   showDetectionResults(data) {
     this.currentDetection = data;
     this.corrections = {};
-    
-    const messagesArea = this.shadowRoot.getElementById('messagesArea');
-    
+
+    const messagesArea = this.shadowRoot.getElementById("messagesArea");
+
     // Build detected fields display
     const fieldsHtml = `
       <div class="detected-fields">
         <h4>Detected Information 
-          <span class="confidence-indicator confidence-${data.confidence || 'medium'}">
-            ${data.confidence || 'medium'} confidence
+          <span class="confidence-indicator confidence-${data.confidence || "medium"}">
+            ${data.confidence || "medium"} confidence
           </span>
         </h4>
         <div class="field-grid">
-          ${this.renderField('Artist', data.artist)}
-          ${this.renderField('Title', data.title)}
-          ${this.renderField('Year', data.year)}
-          ${this.renderField('Catalogue #', data.catalogueNumber)}
-          ${this.renderField('Label', data.label)}
-          ${this.renderField('Country', data.country)}
-          ${this.renderField('Format', data.format)}
-          ${this.renderField('Genre', data.genre)}
+          ${this.renderField("Artist", data.artist)}
+          ${this.renderField("Title", data.title)}
+          ${this.renderField("Year", data.year)}
+          ${this.renderField("Catalogue #", data.catalogueNumber)}
+          ${this.renderField("Label", data.label)}
+          ${this.renderField("Country", data.country)}
+          ${this.renderField("Format", data.format)}
+          ${this.renderField("Genre", data.genre)}
         </div>
-        ${this.hasLearnedCorrections() ? `
+        ${
+          this.hasLearnedCorrections()
+            ? `
           <div class="learned-badge">
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
             Applied ${Object.keys(this.getRelevantLearnings(data)).length} learned corrections
           </div>
-        ` : ''}
+        `
+            : ""
+        }
       </div>
     `;
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'message ai';
+
+    const messageDiv = document.createElement("div");
+    messageDiv.className = "message ai";
     messageDiv.innerHTML = `
       I've analyzed your photos! Here's what I found:
       ${fieldsHtml}
@@ -503,23 +509,23 @@ class AIChat extends HTMLElement {
         Please review these details. If anything looks wrong, click "Wrong [Field]" or type a correction like "The artist is actually..."
       </p>
     `;
-    
+
     messagesArea.appendChild(messageDiv);
     messagesArea.scrollTop = messagesArea.scrollHeight;
-    
+
     // Apply any learned corrections automatically
     this.applyLearnedCorrections(data);
   }
 
   renderField(label, value) {
     const corrected = this.corrections[label.toLowerCase()];
-    const displayValue = corrected || value || '-';
+    const displayValue = corrected || value || "-";
     const isCorrected = !!corrected;
-    
+
     return `
       <div class="field-item">
         <span class="field-label">${label}</span>
-        <span class="field-value ${isCorrected ? 'corrected' : ''} ${value === null ? 'wrong' : ''}">
+        <span class="field-value ${isCorrected ? "corrected" : ""} ${value === null ? "wrong" : ""}">
           ${displayValue}
         </span>
       </div>
@@ -527,19 +533,18 @@ class AIChat extends HTMLElement {
   }
 
   requestCorrection(field) {
-    const currentValue = this.corrections[field] || this.currentDetection?.[field] || '';
-    
-    this.addMessage(
-      `What's the correct ${field}?`,
-      'ai',
-      { meta: 'Type the correct value below' }
-    );
-    
+    const currentValue =
+      this.corrections[field] || this.currentDetection?.[field] || "";
+
+    this.addMessage(`What's the correct ${field}?`, "ai", {
+      meta: "Type the correct value below",
+    });
+
     // Store that we're waiting for this correction
     this.pendingCorrection = field;
-    
+
     // Focus input
-    this.shadowRoot.getElementById('chatInput').focus();
+    this.shadowRoot.getElementById("chatInput").focus();
   }
 
   processUserMessage(message) {
@@ -549,19 +554,35 @@ class AIChat extends HTMLElement {
       this.pendingCorrection = null;
       return;
     }
-    
+
     // Check for natural language corrections
     const correctionPatterns = [
-      { regex: /(?:the\s+)?artist\s+(?:is|should be|was)\s+(.+)/i, field: 'artist' },
-      { regex: /(?:the\s+)?title\s+(?:is|should be|was)\s+(.+)/i, field: 'title' },
-      { regex: /(?:the\s+)?year\s+(?:is|should be|was)\s+(\d{4})/i, field: 'year' },
-      { regex: /(?:the\s+)?catalog(?:ue)?\s*(?:#|number)?\s+(?:is|should be|was)\s+(.+)/i, field: 'catalogueNumber' },
-      { regex: /(?:the\s+)?label\s+(?:is|should be|was)\s+(.+)/i, field: 'label' },
-      { regex: /wrong\s+artist/i, field: 'artist', needsValue: true },
-      { regex: /wrong\s+title/i, field: 'title', needsValue: true },
-      { regex: /wrong\s+year/i, field: 'year', needsValue: true },
+      {
+        regex: /(?:the\s+)?artist\s+(?:is|should be|was)\s+(.+)/i,
+        field: "artist",
+      },
+      {
+        regex: /(?:the\s+)?title\s+(?:is|should be|was)\s+(.+)/i,
+        field: "title",
+      },
+      {
+        regex: /(?:the\s+)?year\s+(?:is|should be|was)\s+(\d{4})/i,
+        field: "year",
+      },
+      {
+        regex:
+          /(?:the\s+)?catalog(?:ue)?\s*(?:#|number)?\s+(?:is|should be|was)\s+(.+)/i,
+        field: "catalogueNumber",
+      },
+      {
+        regex: /(?:the\s+)?label\s+(?:is|should be|was)\s+(.+)/i,
+        field: "label",
+      },
+      { regex: /wrong\s+artist/i, field: "artist", needsValue: true },
+      { regex: /wrong\s+title/i, field: "title", needsValue: true },
+      { regex: /wrong\s+year/i, field: "year", needsValue: true },
     ];
-    
+
     for (const pattern of correctionPatterns) {
       const match = message.match(pattern.regex);
       if (match) {
@@ -573,14 +594,14 @@ class AIChat extends HTMLElement {
         return;
       }
     }
-    
+
     // General question or confirmation
     this.showTyping();
     setTimeout(() => {
       this.hideTyping();
       this.addMessage(
         "I understand. You can tell me about any other corrections needed, or click 'All Correct' if everything looks good!",
-        'ai'
+        "ai",
       );
     }, 800);
   }
@@ -588,115 +609,126 @@ class AIChat extends HTMLElement {
   applyCorrection(field, newValue) {
     const originalValue = this.currentDetection?.[field];
     this.corrections[field] = newValue;
-    
+
     // Store learning data
     this.learnFromCorrection(field, originalValue, newValue);
-    
-    this.addMessage(
-      `Thanks! I've corrected the ${field}.`,
-      'ai',
-      {
-        isCorrection: true,
-        field: field.charAt(0).toUpperCase() + field.slice(1),
-        originalValue,
-        newValue,
-        meta: 'Learning saved for future analyses'
-      }
-    );
-    
+
+    this.addMessage(`Thanks! I've corrected the ${field}.`, "ai", {
+      isCorrection: true,
+      field: field.charAt(0).toUpperCase() + field.slice(1),
+      originalValue,
+      newValue,
+      meta: "Learning saved for future analyses",
+    });
+
     // Update the displayed fields
     this.updateDetectedFieldsDisplay();
-    
+
     // Dispatch event for parent to update form
-    this.dispatchEvent(new CustomEvent('field-corrected', {
-      detail: { field, value: newValue, originalValue },
-      bubbles: true,
-      composed: true
-    }));
+    this.dispatchEvent(
+      new CustomEvent("field-corrected", {
+        detail: { field, value: newValue, originalValue },
+        bubbles: true,
+        composed: true,
+      }),
+    );
   }
 
   learnFromCorrection(field, originalValue, correctedValue) {
     if (!originalValue || !correctedValue) return;
-    
+
     // Create a learning key based on context
     const context = this.buildContextKey();
     const key = `${context}:${field}`;
-    
+
     if (!this.learningData[key]) {
       this.learningData[key] = [];
     }
-    
+
     this.learningData[key].push({
       from: originalValue,
       to: correctedValue,
       timestamp: Date.now(),
-      detection: this.currentDetection
+      detection: this.currentDetection,
     });
-    
+
     // Keep only last 50 corrections per key
     if (this.learningData[key].length > 50) {
       this.learningData[key] = this.learningData[key].slice(-50);
     }
-    
-    localStorage.setItem('ai_learning_data', JSON.stringify(this.learningData));
+
+    localStorage.setItem("ai_learning_data", JSON.stringify(this.learningData));
   }
 
   buildContextKey() {
     // Create a fuzzy context key from available data
     const d = this.currentDetection || {};
-    const artist = (d.artist || '').toLowerCase().replace(/[^\w]/g, '').slice(0, 10);
-    const title = (d.title || '').toLowerCase().replace(/[^\w]/g, '').slice(0, 10);
+    const artist = (d.artist || "")
+      .toLowerCase()
+      .replace(/[^\w]/g, "")
+      .slice(0, 10);
+    const title = (d.title || "")
+      .toLowerCase()
+      .replace(/[^\w]/g, "")
+      .slice(0, 10);
     return `${artist}_${title}`;
   }
 
   getRelevantLearnings(currentDetection) {
     const context = this.buildContextKey();
     const learnings = {};
-    
+
     for (const [key, corrections] of Object.entries(this.learningData)) {
       if (key.startsWith(context)) {
-        const field = key.split(':')[1];
+        const field = key.split(":")[1];
         // Get most common correction
         const counts = {};
-        corrections.forEach(c => {
+        corrections.forEach((c) => {
           const k = `${c.from}->${c.to}`;
           counts[k] = (counts[k] || 0) + 1;
         });
-        const mostCommon = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-        if (mostCommon && mostCommon[1] >= 2) { // Need at least 2 occurrences
-          const [from, to] = mostCommon[0].split('->');
+        const mostCommon = Object.entries(counts).sort(
+          (a, b) => b[1] - a[1],
+        )[0];
+        if (mostCommon && mostCommon[1] >= 2) {
+          // Need at least 2 occurrences
+          const [from, to] = mostCommon[0].split("->");
           learnings[field] = { from, to, confidence: mostCommon[1] };
         }
       }
     }
-    
+
     return learnings;
   }
 
   hasLearnedCorrections() {
-    return Object.keys(this.getRelevantLearnings(this.currentDetection)).length > 0;
+    return (
+      Object.keys(this.getRelevantLearnings(this.currentDetection)).length > 0
+    );
   }
 
   applyLearnedCorrections(data) {
     const learnings = this.getRelevantLearnings(data);
-    
+
     for (const [field, learning] of Object.entries(learnings)) {
       if (data[field] === learning.from) {
         this.corrections[field] = learning.to;
-        console.log(`Applied learned correction: ${field} "${learning.from}" -> "${learning.to}"`);
+        console.log(
+          `Applied learned correction: ${field} "${learning.from}" -> "${learning.to}"`,
+        );
       }
     }
   }
 
   updateDetectedFieldsDisplay() {
     // Remove old detection display and show updated one
-    const messages = this.shadowRoot.querySelectorAll('.message.ai');
-    messages.forEach(m => {
-      if (m.querySelector('.detected-fields')) {
+    const messages = this.shadowRoot.querySelectorAll(".message.ai");
+    messages.forEach((m) => {
+      if (m.querySelector(".detected-fields")) {
         m.remove();
       }
     });
-    
+
     // Re-show with corrections applied
     const correctedData = { ...this.currentDetection, ...this.corrections };
     this.showDetectionResults(correctedData);
@@ -705,18 +737,20 @@ class AIChat extends HTMLElement {
   confirmAllFields() {
     this.addMessage(
       "Great! All information confirmed. I'll use these details for your listing.",
-      'ai',
-      { meta: 'Proceeding with verified information' }
+      "ai",
+      { meta: "Proceeding with verified information" },
     );
-    
-    this.dispatchEvent(new CustomEvent('all-confirmed', {
-      detail: { 
-        data: { ...this.currentDetection, ...this.corrections },
-        corrections: this.corrections
-      },
-      bubbles: true,
-      composed: true
-    }));
+
+    this.dispatchEvent(
+      new CustomEvent("all-confirmed", {
+        detail: {
+          data: { ...this.currentDetection, ...this.corrections },
+          corrections: this.corrections,
+        },
+        bubbles: true,
+        composed: true,
+      }),
+    );
   }
 
   getCorrectedData() {
@@ -728,8 +762,8 @@ class AIChat extends HTMLElement {
     this.corrections = {};
     this.currentDetection = null;
     this.pendingCorrection = null;
-    
-    const messagesArea = this.shadowRoot.getElementById('messagesArea');
+
+    const messagesArea = this.shadowRoot.getElementById("messagesArea");
     messagesArea.innerHTML = `
       <div class="message ai">
         Hi! I'll analyze your record photos and help identify the details. If I get anything wrong, just correct me—I'll learn from it for next time!
@@ -738,4 +772,4 @@ class AIChat extends HTMLElement {
   }
 }
 
-customElements.define('ai-chat', AIChat);
+customElements.define("ai-chat", AIChat);

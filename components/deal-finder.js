@@ -6,7 +6,7 @@ class DealFinder extends HTMLElement {
 
   connectedCallback() {
     if (!this.shadowRoot) {
-      this.attachShadow({ mode: 'open' });
+      this.attachShadow({ mode: "open" });
     }
     this.render();
   }
@@ -62,50 +62,61 @@ class DealFinder extends HTMLElement {
     `;
   }
 
-  calculateMetrics(buyPrice, estimatedValue, condition = 'VG', goal = 'balanced') {
+  calculateMetrics(
+    buyPrice,
+    estimatedValue,
+    condition = "VG",
+    goal = "balanced",
+  ) {
     // Condition multipliers for quick estimation
     const conditionMultipliers = {
-      'M': 1.5, 'NM': 1.3, 'VG+': 1.0, 'VG': 0.7,
-      'G+': 0.5, 'G': 0.35, 'F': 0.2, 'P': 0.1
+      M: 1.5,
+      NM: 1.3,
+      "VG+": 1.0,
+      VG: 0.7,
+      "G+": 0.5,
+      G: 0.35,
+      F: 0.2,
+      P: 0.1,
     };
-    
+
     const condMult = conditionMultipliers[condition] || 0.7;
     const adjustedValue = estimatedValue * condMult;
-    
+
     // Fee calculation (eBay UK approx)
     const ebayFees = adjustedValue * 0.13;
-    const paypalFees = adjustedValue * 0.029 + 0.30;
-    const shipping = 4.50;
-    const packing = 1.50;
+    const paypalFees = adjustedValue * 0.029 + 0.3;
+    const shipping = 4.5;
+    const packing = 1.5;
     const totalFees = ebayFees + paypalFees + shipping + packing;
-    
+
     // Minimum profit threshold
-    const minProfit = Math.max(buyPrice * 0.30, 3); // 30% or £3 minimum
-    
+    const minProfit = Math.max(buyPrice * 0.3, 3); // 30% or £3 minimum
+
     // Suggested listing price based on goal
     let listingPrice;
-    switch(goal) {
-      case 'quick':
+    switch (goal) {
+      case "quick":
         listingPrice = adjustedValue * 0.85;
         break;
-      case 'max':
+      case "max":
         listingPrice = adjustedValue * 1.1;
         break;
       default:
         listingPrice = adjustedValue;
     }
-    
+
     const netProfit = listingPrice - buyPrice - totalFees;
     const roi = buyPrice > 0 ? ((netProfit / buyPrice) * 100).toFixed(1) : 0;
     const margin = ((netProfit / listingPrice) * 100).toFixed(1);
-    
+
     // Deal score (0-100)
     let score = 0;
     if (netProfit >= minProfit) score += 40;
     if (roi >= 30) score += 30;
     if (roi >= 50) score += 20;
     if (adjustedValue > buyPrice * 2) score += 10;
-    
+
     return {
       buyPrice,
       estimatedValue,
@@ -118,14 +129,21 @@ class DealFinder extends HTMLElement {
       score,
       isViable: netProfit >= minProfit && roi >= 20,
       isHot: netProfit >= minProfit * 1.5 && roi >= 40,
-      recommendation: netProfit < 0 ? 'PASS' : roi >= 50 ? 'QUICK FLIP' : roi >= 30 ? 'GOOD DEAL' : 'MARGINAL'
+      recommendation:
+        netProfit < 0
+          ? "PASS"
+          : roi >= 50
+            ? "QUICK FLIP"
+            : roi >= 30
+              ? "GOOD DEAL"
+              : "MARGINAL",
     };
   }
 
   analyzeDeal(artist, title, buyPrice, listedCondition, discogsData = null) {
     // If we have Discogs data, use it for better estimation
     let estimatedValue = 15; // Default fallback
-    
+
     if (discogsData) {
       if (discogsData.lowest_price) {
         estimatedValue = discogsData.lowest_price;
@@ -133,22 +151,26 @@ class DealFinder extends HTMLElement {
         estimatedValue = discogsData.median;
       }
     }
-    
-    const metrics = this.calculateMetrics(buyPrice, estimatedValue, listedCondition);
-    
+
+    const metrics = this.calculateMetrics(
+      buyPrice,
+      estimatedValue,
+      listedCondition,
+    );
+
     return {
       artist,
       title,
       ...metrics,
       discogsUrl: discogsData?.uri || null,
       releaseId: discogsData?.id || null,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
   }
 
   formatCurrency(amount) {
-    return '£' + parseFloat(amount).toFixed(2);
+    return "£" + parseFloat(amount).toFixed(2);
   }
 }
 
-customElements.define('deal-finder', DealFinder);
+customElements.define("deal-finder", DealFinder);

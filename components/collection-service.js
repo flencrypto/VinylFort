@@ -1,7 +1,7 @@
 // Collection Service - Shared functionality for collection management
 class CollectionService {
   constructor() {
-    this.storageKey = 'vinyl_collection';
+    this.storageKey = "vinyl_collection";
   }
 
   // Get all records from collection
@@ -18,12 +18,13 @@ class CollectionService {
   // Add or update a record
   saveRecord(record) {
     const collection = this.getCollection();
-    
+
     // Check if record exists
-    const existingIndex = collection.findIndex(r => 
-      r.artist === record.artist && 
-      r.title === record.title &&
-      r.catalogueNumber === record.catalogueNumber
+    const existingIndex = collection.findIndex(
+      (r) =>
+        r.artist === record.artist &&
+        r.title === record.title &&
+        r.catalogueNumber === record.catalogueNumber,
     );
 
     if (existingIndex >= 0) {
@@ -31,7 +32,7 @@ class CollectionService {
       collection[existingIndex] = {
         ...collection[existingIndex],
         ...record,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       };
     } else {
       // Add new
@@ -40,7 +41,7 @@ class CollectionService {
     }
 
     this.saveCollection(collection);
-    return existingIndex >= 0 ? 'updated' : 'added';
+    return existingIndex >= 0 ? "updated" : "added";
   }
 
   // Delete a record
@@ -54,27 +55,35 @@ class CollectionService {
   getStats() {
     const collection = this.getCollection();
     const totalRecords = collection.length;
-    const totalInvested = collection.reduce((sum, r) => sum + (parseFloat(r.purchasePrice) || 0), 0);
-    const totalValue = collection.reduce((sum, r) => sum + (parseFloat(r.estimatedValue) || 0), 0);
+    const totalInvested = collection.reduce(
+      (sum, r) => sum + (parseFloat(r.purchasePrice) || 0),
+      0,
+    );
+    const totalValue = collection.reduce(
+      (sum, r) => sum + (parseFloat(r.estimatedValue) || 0),
+      0,
+    );
     const totalProfit = totalValue - totalInvested;
-    const roi = totalInvested > 0 ? ((totalProfit / totalInvested) * 100).toFixed(1) : 0;
+    const roi =
+      totalInvested > 0 ? ((totalProfit / totalInvested) * 100).toFixed(1) : 0;
 
     return {
       totalRecords,
       totalInvested,
       totalValue,
       totalProfit,
-      roi
+      roi,
     };
   }
 
   // Find record by artist/title/cat#
   findRecord(artist, title, catalogueNumber) {
     const collection = this.getCollection();
-    return collection.find(r => 
-      r.artist === artist && 
-      r.title === title &&
-      r.catalogueNumber === catalogueNumber
+    return collection.find(
+      (r) =>
+        r.artist === artist &&
+        r.title === title &&
+        r.catalogueNumber === catalogueNumber,
     );
   }
 
