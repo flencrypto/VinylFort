@@ -687,11 +687,16 @@ class DiscogsService {
     const totalScore = scored.score + photoScored.score;
     const combinedEvidence = [...scored.evidence, ...photoScored.evidence];
 
-    let confidence = "low";
-    if (totalScore >= 60) {
-      confidence = "high";
-    } else if (totalScore >= 35) {
-      confidence = "medium";
+    // Start from the confidence determined by scoreReleaseMatch (which includes
+    // special handling such as barcode + catalog/matrix combinations), and only
+    // upgrade it based on the combined totalScore.
+    let confidence = scored.confidence || "low";
+    if (confidence !== "high") {
+      if (totalScore >= 60) {
+        confidence = "high";
+      } else if (totalScore >= 35 && confidence !== "medium") {
+        confidence = "medium";
+      }
     }
 
     return {
