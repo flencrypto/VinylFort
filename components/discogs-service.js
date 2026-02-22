@@ -391,7 +391,7 @@ class DiscogsService {
       );
       if (matchedSignal) {
         score += 5;
-        evidence.push(`Photo hint matched release media (${hint})`);
+        evidence.push(`Photo hint matched release metadata (${hint})`);
       }
     });
 
