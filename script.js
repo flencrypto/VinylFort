@@ -491,6 +491,30 @@ function getAIService() {
     }
     return window.ocrService;
 }
+
+function resolveOCRProvider() {
+    const preferredProvider = localStorage.getItem('ai_provider') || 'openai';
+    const deepseekModel = localStorage.getItem('deepseek_model') || 'deepseek-chat';
+    const canUseDeepseekVision =
+        preferredProvider === 'deepseek' &&
+        window.deepseekService?.isConfigured &&
+        window.deepseekService.isVisionModel(deepseekModel);
+
+    if (canUseDeepseekVision) {
+        return { provider: 'deepseek', fallbackReason: null };
+    }
+
+    if (preferredProvider === 'deepseek') {
+        return {
+            provider: 'openai',
+            fallbackReason: window.deepseekService?.isConfigured
+                ? `DeepSeek model \"${deepseekModel}\" does not support image analysis.`
+                : 'DeepSeek API key not configured.'
+        };
+    }
+
+    return { provider: 'openai', fallbackReason: null };
+}
 // Analysis progress state
 let analysisProgressInterval = null;
 
@@ -558,8 +582,12 @@ async function analyzePhotosWithOCR() {
         startAnalysisProgressSimulation();
         
         // Determine which AI service to use
-        const provider = localStorage.getItem('ai_provider') || 'openai';
-        const service = getAIService();
+        const { provider, fallbackReason } = resolveOCRProvider();
+        const service = provider === 'deepseek' ? window.deepseekService : window.ocrService;
+
+        if (fallbackReason) {
+            showToast(`${fallbackReason} Falling back to OpenAI for OCR.`, 'warning');
+        }
         
         // Update API keys
         if (provider === 'openai') {
