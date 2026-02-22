@@ -2,11 +2,13 @@
 
 // AI Mood Analysis
 function openMoodAnalysis() {
-    // Use Joyride flare for mood analysis
-    if (typeof vscode !== 'undefined') {
-        vscode.postMessage({
-            command: 'executeCommand',
-            args: ['joyride.runCode', `
+  // Use Joyride flare for mood analysis
+  if (typeof vscode !== "undefined") {
+    vscode.postMessage({
+      command: "executeCommand",
+      args: [
+        "joyride.runCode",
+        `
 (flares/flare!+ {:html [:div {:style {:padding "20px" :background "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" :color "white" :border-radius "10px"}}
                         [:h2 "🎵 AI Mood Analysis"]
                         [:p "Analyzing the emotional vibe of your vinyl collection..."]
@@ -14,19 +16,24 @@ function openMoodAnalysis() {
                         [:p {:style {:font-size "0.9em" :opacity "0.8"}} "Detecting genres, moods, and musical characteristics..."]]
                  :title "Mood Analysis"
                  :key :mood-analysis})
-`]
-        });
-    } else {
-        alert('AI Mood Analysis: This feature requires VS Code with Joyride extension for full functionality.');
-    }
+`,
+      ],
+    });
+  } else {
+    alert(
+      "AI Mood Analysis: This feature requires VS Code with Joyride extension for full functionality.",
+    );
+  }
 }
 
 // VR Preview
 function openVRPreview() {
-    if (typeof vscode !== 'undefined') {
-        vscode.postMessage({
-            command: 'executeCommand',
-            args: ['joyride.runCode', `
+  if (typeof vscode !== "undefined") {
+    vscode.postMessage({
+      command: "executeCommand",
+      args: [
+        "joyride.runCode",
+        `
 (flares/flare!+ {:html [:div {:style {:padding "20px" :background "#000" :color "#00ff88" :font-family "monospace" :min-height "400px"}}
                         [:div {:class "vr-hologram"}
                          [:h2 "🕶️ Virtual Reality Listening Room"]
@@ -40,19 +47,22 @@ function openVRPreview() {
                           "Enter VR Mode (Coming Soon)"]]]
                  :title "VR Preview"
                  :key :vr-preview})
-`]
-        });
-    } else {
-        alert('VR Preview: Virtual reality features coming soon!');
-    }
+`,
+      ],
+    });
+  } else {
+    alert("VR Preview: Virtual reality features coming soon!");
+  }
 }
 
 // Blockchain Authenticity
 function openBlockchainAuth() {
-    if (typeof vscode !== 'undefined') {
-        vscode.postMessage({
-            command: 'executeCommand',
-            args: ['joyride.runCode', `
+  if (typeof vscode !== "undefined") {
+    vscode.postMessage({
+      command: "executeCommand",
+      args: [
+        "joyride.runCode",
+        `
 (flares/flare!+ {:html [:div {:style {:padding "20px" :background "linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)" :color "white" :border-radius "10px"}}
                         [:h2 "⛓️ Blockchain Authenticity"]
                         [:div {:style {:background "rgba(255,255,255,0.1)" :padding "15px" :border-radius "8px" :margin "15px 0"}}
@@ -69,19 +79,24 @@ function openBlockchainAuth() {
                           "Transfer Ownership"]]]
                  :title "Blockchain Auth"
                  :key :blockchain-auth})
-`]
-        });
-    } else {
-        alert('Blockchain Authenticity: Secure your collection with crypto certificates!');
-    }
+`,
+      ],
+    });
+  } else {
+    alert(
+      "Blockchain Authenticity: Secure your collection with crypto certificates!",
+    );
+  }
 }
 
 // Quantum Analytics
 function openQuantumAnalytics() {
-    if (typeof vscode !== 'undefined') {
-        vscode.postMessage({
-            command: 'executeCommand',
-            args: ['joyride.runCode', `
+  if (typeof vscode !== "undefined") {
+    vscode.postMessage({
+      command: "executeCommand",
+      args: [
+        "joyride.runCode",
+        `
 (flares/flare!+ {:html [:div {:style {:padding "20px" :background "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)" :color "#06b6d4" :border-radius "10px" :min-height "500px"}}
                         [:h2 "⚛️ Quantum Analytics Dashboard"]
                         [:div {:class "cyber-grid" :style {:height "300px" :border-radius "8px" :margin "20px 0" :position "relative"}}
@@ -102,9 +117,10 @@ function openQuantumAnalytics() {
                           "Export Report"]]]
                  :title "Quantum Analytics"
                  :key :quantum-analytics})
-`]
-        });
-    } else {
-        alert('Quantum Analytics: Advanced market insights powered by AI!');
-    }
+`,
+      ],
+    });
+  } else {
+    alert("Quantum Analytics: Advanced market insights powered by AI!");
+  }
 }

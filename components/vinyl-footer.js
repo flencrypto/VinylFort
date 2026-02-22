@@ -1,7 +1,7 @@
 class VinylFooter extends HTMLElement {
   connectedCallback() {
     if (!this.shadowRoot) {
-      this.attachShadow({ mode: 'open' });
+      this.attachShadow({ mode: "open" });
     }
     this.shadowRoot.innerHTML = `
       <style>
@@ -147,4 +147,4 @@ class VinylFooter extends HTMLElement {
   }
 }
 
-customElements.define('vinyl-footer', VinylFooter);
+customElements.define("vinyl-footer", VinylFooter);

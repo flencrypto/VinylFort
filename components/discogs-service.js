@@ -1,14 +1,15 @@
 class DiscogsService {
   constructor() {
-    this.token = localStorage.getItem('discogs_token');
-    this.key = localStorage.getItem('discogs_key');
-    this.secret = localStorage.getItem('discogs_secret');
-    this.baseUrl = 'https://api.discogs.com';
-    this.userAgent = 'VinylVaultPro/1.0 +https://github.com/flencrypto/VinylFort';
+    this.token = localStorage.getItem("discogs_token");
+    this.key = localStorage.getItem("discogs_key");
+    this.secret = localStorage.getItem("discogs_secret");
+    this.baseUrl = "https://api.discogs.com";
+    this.userAgent =
+      "VinylVaultPro/1.0 +https://github.com/flencrypto/VinylFort";
     this.rateLimit = {
       limit: 60,
       remaining: 60,
-      used: 0
+      used: 0,
     };
   }
 
@@ -20,29 +21,36 @@ class DiscogsService {
 
   getHeaders() {
     const headers = {
-      'User-Agent': this.userAgent,
-      'Accept': 'application/vnd.discogs.v2.plaintext+json'
+      "User-Agent": this.userAgent,
+      Accept: "application/vnd.discogs.v2.plaintext+json",
     };
-    
+
     // Prefer token-based authentication if available
     if (this.token) {
-      headers['Authorization'] = `Discogs token=${this.token}`;
+      headers["Authorization"] = `Discogs token=${this.token}`;
     } else if (this.key && this.secret) {
-      headers['Authorization'] = `Discogs key=${this.key}, secret=${this.secret}`;
+      headers["Authorization"] =
+        `Discogs key=${this.key}, secret=${this.secret}`;
     }
-    
+
     return headers;
   }
 
   updateRateLimitFromHeaders(headers) {
-    if (headers.has('X-Discogs-Ratelimit')) {
-      this.rateLimit.limit = parseInt(headers.get('X-Discogs-Ratelimit'), 10);
+    if (headers.has("X-Discogs-Ratelimit")) {
+      this.rateLimit.limit = parseInt(headers.get("X-Discogs-Ratelimit"), 10);
     }
-    if (headers.has('X-Discogs-Ratelimit-Used')) {
-      this.rateLimit.used = parseInt(headers.get('X-Discogs-Ratelimit-Used'), 10);
+    if (headers.has("X-Discogs-Ratelimit-Used")) {
+      this.rateLimit.used = parseInt(
+        headers.get("X-Discogs-Ratelimit-Used"),
+        10,
+      );
     }
-    if (headers.has('X-Discogs-Ratelimit-Remaining')) {
-      this.rateLimit.remaining = parseInt(headers.get('X-Discogs-Ratelimit-Remaining'), 10);
+    if (headers.has("X-Discogs-Ratelimit-Remaining")) {
+      this.rateLimit.remaining = parseInt(
+        headers.get("X-Discogs-Ratelimit-Remaining"),
+        10,
+      );
     }
   }
 
@@ -50,24 +58,30 @@ class DiscogsService {
     this.updateRateLimitFromHeaders(response.headers);
 
     if (response.status === 429) {
-      throw new Error('Rate limit exceeded. Please wait before making more requests.');
+      throw new Error(
+        "Rate limit exceeded. Please wait before making more requests.",
+      );
     }
 
     if (response.status === 401) {
-      throw new Error('Unauthorized. Please check your Discogs API credentials.');
+      throw new Error(
+        "Unauthorized. Please check your Discogs API credentials.",
+      );
     }
 
     if (response.status === 403) {
-      throw new Error('Forbidden. You do not have permission to access this resource.');
+      throw new Error(
+        "Forbidden. You do not have permission to access this resource.",
+      );
     }
 
     if (response.status === 404) {
-      throw new Error('Resource not found.');
+      throw new Error("Resource not found.");
     }
 
     if (response.status === 422) {
       const errorData = await response.json();
-      throw new Error(errorData.message || 'Invalid request parameters.');
+      throw new Error(errorData.message || "Invalid request parameters.");
     }
 
     if (!response.ok) {
@@ -78,68 +92,74 @@ class DiscogsService {
   }
 
   async sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   async fetchWithRetry(url, options, maxRetries = 3) {
     let lastError;
-    
+
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         const response = await fetch(url, options);
-        
+
         if (response.status === 429) {
-          const retryAfter = response.headers.get('Retry-After');
-          const waitTime = retryAfter ? parseInt(retryAfter, 10) * 1000 : Math.pow(2, attempt) * 1000;
-          
-          console.warn(`Rate limited. Waiting ${waitTime}ms before retry ${attempt + 1}/${maxRetries}...`);
+          const retryAfter = response.headers.get("Retry-After");
+          const waitTime = retryAfter
+            ? parseInt(retryAfter, 10) * 1000
+            : Math.pow(2, attempt) * 1000;
+
+          console.warn(
+            `Rate limited. Waiting ${waitTime}ms before retry ${attempt + 1}/${maxRetries}...`,
+          );
           await this.sleep(waitTime);
           continue;
         }
-        
+
         return response;
       } catch (error) {
         lastError = error;
         if (attempt < maxRetries - 1) {
           const waitTime = Math.pow(2, attempt) * 1000;
-          console.warn(`Request failed. Retrying in ${waitTime}ms... (${attempt + 1}/${maxRetries})`);
+          console.warn(
+            `Request failed. Retrying in ${waitTime}ms... (${attempt + 1}/${maxRetries})`,
+          );
           await this.sleep(waitTime);
         }
       }
     }
-    
-    throw lastError || new Error('Max retries exceeded');
+
+    throw lastError || new Error("Max retries exceeded");
   }
 
   async fetchPaginatedResults(baseUrl, params = {}, maxPages = 5) {
     const allResults = [];
     let currentPage = params.page || 1;
     let hasMorePages = true;
-    
+
     while (hasMorePages && currentPage <= maxPages) {
       const queryParams = new URLSearchParams({
         ...params,
         page: currentPage,
-        per_page: params.per_page || 50
+        per_page: params.per_page || 50,
       });
-      
+
       try {
         const response = await this.fetchWithRetry(
           `${baseUrl}?${queryParams}`,
-          { headers: this.getHeaders() }
+          { headers: this.getHeaders() },
         );
-        
+
         await this.handleResponse(response);
         const data = await response.json();
-        
+
         if (data.results && Array.isArray(data.results)) {
           allResults.push(...data.results);
         } else {
           // No valid results structure, stop pagination
-          console.warn('Invalid or missing results structure in response');
+          console.warn("Invalid or missing results structure in response");
           break;
         }
-        
+
         if (data.pagination) {
           hasMorePages = currentPage < data.pagination.pages;
           currentPage++;
@@ -151,18 +171,21 @@ class DiscogsService {
         break;
       }
     }
-    
+
     return allResults;
   }
 
   async testConnection() {
     if (!this.token && (!this.key || !this.secret)) {
-      throw new Error('Discogs API credentials not configured');
+      throw new Error("Discogs API credentials not configured");
     }
 
-    const response = await fetch(`${this.baseUrl}/database/search?q=test&per_page=1`, {
-      headers: this.getHeaders()
-    });
+    const response = await fetch(
+      `${this.baseUrl}/database/search?q=test&per_page=1`,
+      {
+        headers: this.getHeaders(),
+      },
+    );
 
     await this.handleResponse(response);
     return true;
@@ -171,24 +194,24 @@ class DiscogsService {
   async searchRelease(artist, title, catNo) {
     if (!this.token && (!this.key || !this.secret)) return null;
 
-    let query = '';
+    let query = "";
     if (artist) query += artist;
-    if (title) query += (query ? ' ' : '') + title;
-    if (catNo) query += (query ? ' ' : '') + catNo;
+    if (title) query += (query ? " " : "") + title;
+    if (catNo) query += (query ? " " : "") + catNo;
 
     try {
       const response = await this.fetchWithRetry(
-        `${this.baseUrl}/database/search?q=${encodeURIComponent(query)}&type=release&per_page=5`, 
+        `${this.baseUrl}/database/search?q=${encodeURIComponent(query)}&type=release&per_page=5`,
         {
-          headers: this.getHeaders()
-        }
+          headers: this.getHeaders(),
+        },
       );
 
       await this.handleResponse(response);
       const data = await response.json();
       return data.results?.[0] || null;
     } catch (error) {
-      console.error('Search release failed:', error);
+      console.error("Search release failed:", error);
       return null;
     }
   }
@@ -196,24 +219,24 @@ class DiscogsService {
   async searchReleaseCandidates(artist, title, catNo, limit = 5) {
     if (!this.token && (!this.key || !this.secret)) return [];
 
-    let query = '';
+    let query = "";
     if (artist) query += artist;
-    if (title) query += (query ? ' ' : '') + title;
-    if (catNo) query += (query ? ' ' : '') + catNo;
+    if (title) query += (query ? " " : "") + title;
+    if (catNo) query += (query ? " " : "") + catNo;
 
     try {
       const response = await this.fetchWithRetry(
         `${this.baseUrl}/database/search?q=${encodeURIComponent(query)}&type=release&per_page=${limit}`,
         {
-          headers: this.getHeaders()
-        }
+          headers: this.getHeaders(),
+        },
       );
 
       await this.handleResponse(response);
       const data = await response.json();
       return data.results || [];
     } catch (error) {
-      console.error('Search release candidates failed:', error);
+      console.error("Search release candidates failed:", error);
       return [];
     }
   }
@@ -221,25 +244,28 @@ class DiscogsService {
     if (!this.token && (!this.key || !this.secret)) return null;
 
     try {
-      const response = await this.fetchWithRetry(`${this.baseUrl}/releases/${releaseId}`, {
-        headers: this.getHeaders()
-      });
+      const response = await this.fetchWithRetry(
+        `${this.baseUrl}/releases/${releaseId}`,
+        {
+          headers: this.getHeaders(),
+        },
+      );
 
       await this.handleResponse(response);
       return await response.json();
     } catch (error) {
-      console.error('Get release details failed:', error);
+      console.error("Get release details failed:", error);
       return null;
     }
   }
 
   async fetchTracklist(releaseId) {
     if ((!this.token && (!this.key || !this.secret)) || !releaseId) return null;
-    
+
     try {
       const details = await this.getReleaseDetails(releaseId);
       if (!details || !details.tracklist) return null;
-      
+
       return {
         tracklist: details.tracklist,
         notes: details.notes,
@@ -251,66 +277,74 @@ class DiscogsService {
         uri: details.uri,
         master_id: details.master_id,
         lowest_price: details.lowest_price,
-        num_for_sale: details.num_for_sale
+        num_for_sale: details.num_for_sale,
       };
     } catch (e) {
-      console.error('Failed to fetch tracklist:', e);
+      console.error("Failed to fetch tracklist:", e);
       return null;
     }
   }
 
   async fetchMasterReleaseDetails(masterId) {
     if ((!this.token && (!this.key || !this.secret)) || !masterId) return null;
-    
+
     try {
-      const response = await this.fetchWithRetry(`${this.baseUrl}/masters/${masterId}`, {
-        headers: this.getHeaders()
-      });
-      
+      const response = await this.fetchWithRetry(
+        `${this.baseUrl}/masters/${masterId}`,
+        {
+          headers: this.getHeaders(),
+        },
+      );
+
       await this.handleResponse(response);
       return await response.json();
     } catch (e) {
-      console.error('Failed to fetch master details:', e);
+      console.error("Failed to fetch master details:", e);
       return null;
     }
   }
 
   async searchByBarcode(barcode) {
     if ((!this.token && (!this.key || !this.secret)) || !barcode) return null;
-    
+
     try {
       const response = await this.fetchWithRetry(
         `${this.baseUrl}/database/search?barcode=${encodeURIComponent(barcode)}&type=release&per_page=5`,
         {
-          headers: this.getHeaders()
-        }
+          headers: this.getHeaders(),
+        },
       );
-      
+
       await this.handleResponse(response);
       const data = await response.json();
       return data.results || [];
     } catch (e) {
-      console.error('Barcode search failed:', e);
+      console.error("Barcode search failed:", e);
       return null;
     }
   }
 
   normalizeText(value) {
-    if (!value) return '';
-    return String(value).toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!value) return "";
+    return String(value)
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
   }
 
   normalizeDigits(value) {
-    if (!value) return '';
-    return String(value).replace(/[^0-9]/g, '');
+    if (!value) return "";
+    return String(value).replace(/[^0-9]/g, "");
   }
 
   extractIdentifierValues(identifiers, typeMatchers) {
     if (!Array.isArray(identifiers)) return [];
-    const matchers = typeMatchers.map(t => t.toLowerCase());
+    const matchers = typeMatchers.map((t) => t.toLowerCase());
     return identifiers
-      .filter(i => i?.type && matchers.some(m => i.type.toLowerCase().includes(m)))
-      .map(i => i.value)
+      .filter(
+        (i) =>
+          i?.type && matchers.some((m) => i.type.toLowerCase().includes(m)),
+      )
+      .map((i) => i.value)
       .filter(Boolean);
   }
 
@@ -318,17 +352,28 @@ class DiscogsService {
     if (!needle || !Array.isArray(haystackList)) return null;
     const normNeedle = this.normalizeText(needle);
     if (!normNeedle) return null;
-    return haystackList.find(value => this.normalizeText(value).includes(normNeedle) || normNeedle.includes(this.normalizeText(value)));
+    return haystackList.find(
+      (value) =>
+        this.normalizeText(value).includes(normNeedle) ||
+        normNeedle.includes(this.normalizeText(value)),
+    );
   }
 
   matchBarcode(ocrBarcode, identifiers) {
     if (!ocrBarcode) return null;
     const ocrDigits = this.normalizeDigits(ocrBarcode);
     if (!ocrDigits) return null;
-    const barcodeValues = this.extractIdentifierValues(identifiers, ['barcode']);
+    const barcodeValues = this.extractIdentifierValues(identifiers, [
+      "barcode",
+    ]);
     for (const value of barcodeValues) {
       const candidateDigits = this.normalizeDigits(value);
-      if (candidateDigits && (candidateDigits === ocrDigits || candidateDigits.includes(ocrDigits) || ocrDigits.includes(candidateDigits))) {
+      if (
+        candidateDigits &&
+        (candidateDigits === ocrDigits ||
+          candidateDigits.includes(ocrDigits) ||
+          ocrDigits.includes(candidateDigits))
+      ) {
         return value;
       }
     }
@@ -338,14 +383,25 @@ class DiscogsService {
   matchCatalogNumber(ocrCat, details) {
     if (!ocrCat || !details) return null;
     const ocrNorm = this.normalizeText(ocrCat);
-    const labelCatNos = details.labels?.map(l => l.catno).filter(Boolean) || [];
-    const idCatNos = this.extractIdentifierValues(details.identifiers, ['catalog', 'cat no', 'catno']);
+    const labelCatNos =
+      details.labels?.map((l) => l.catno).filter(Boolean) || [];
+    const idCatNos = this.extractIdentifierValues(details.identifiers, [
+      "catalog",
+      "cat no",
+      "catno",
+    ]);
     const candidates = [...labelCatNos, ...idCatNos];
-    return candidates.find(cat => this.normalizeText(cat) === ocrNorm) || this.findBestMatchToken(candidates, ocrCat);
+    return (
+      candidates.find((cat) => this.normalizeText(cat) === ocrNorm) ||
+      this.findBestMatchToken(candidates, ocrCat)
+    );
   }
 
   matchMatrix(ocrMatrices, identifiers) {
-    const matrixValues = this.extractIdentifierValues(identifiers, ['matrix', 'runout']);
+    const matrixValues = this.extractIdentifierValues(identifiers, [
+      "matrix",
+      "runout",
+    ]);
     if (!matrixValues.length) return null;
     const ocrList = (ocrMatrices || []).filter(Boolean);
     for (const ocrVal of ocrList) {
@@ -358,33 +414,44 @@ class DiscogsService {
   matchNotes(ocrTokens, notes) {
     if (!notes || !ocrTokens?.length) return null;
     const normalizedNotes = this.normalizeText(notes);
-    return ocrTokens.find(token => {
-      const norm = this.normalizeText(token);
-      return norm.length >= 4 && normalizedNotes.includes(norm);
-    }) || null;
+    return (
+      ocrTokens.find((token) => {
+        const norm = this.normalizeText(token);
+        return norm.length >= 4 && normalizedNotes.includes(norm);
+      }) || null
+    );
   }
 
   matchLabel(ocrLabel, details) {
     if (!ocrLabel || !details) return null;
-    const labels = details.labels?.map(l => l.name).filter(Boolean) || [];
+    const labels = details.labels?.map((l) => l.name).filter(Boolean) || [];
     return this.findBestMatchToken(labels, ocrLabel);
   }
 
   matchRightsSociety(ocrValue, identifiers) {
     if (!ocrValue) return null;
-    const values = this.extractIdentifierValues(identifiers, ['rights society', 'rights']);
+    const values = this.extractIdentifierValues(identifiers, [
+      "rights society",
+      "rights",
+    ]);
     return this.findBestMatchToken(values, ocrValue);
   }
 
   matchLabelCode(ocrValue, identifiers) {
     if (!ocrValue) return null;
-    const values = this.extractIdentifierValues(identifiers, ['label code', 'label']);
+    const values = this.extractIdentifierValues(identifiers, [
+      "label code",
+      "label",
+    ]);
     return this.findBestMatchToken(values, ocrValue);
   }
 
   matchPressingPlant(ocrValue, identifiers) {
     if (!ocrValue) return null;
-    const values = this.extractIdentifierValues(identifiers, ['pressing plant', 'pressing']);
+    const values = this.extractIdentifierValues(identifiers, [
+      "pressing plant",
+      "pressing",
+    ]);
     return this.findBestMatchToken(values, ocrValue);
   }
 
@@ -399,7 +466,10 @@ class DiscogsService {
       evidence.push(`Barcode match (${barcodeMatch})`);
     }
 
-    const catalogMatch = this.matchCatalogNumber(ocrData.catalogueNumber, details);
+    const catalogMatch = this.matchCatalogNumber(
+      ocrData.catalogueNumber,
+      details,
+    );
     if (catalogMatch) {
       score += 25;
       evidence.push(`Catalog # match (${catalogMatch})`);
@@ -409,7 +479,7 @@ class DiscogsService {
       ocrData.matrixRunoutA,
       ocrData.matrixRunoutB,
       ocrData.pressingInfo,
-      ...(ocrData.identifierStrings || [])
+      ...(ocrData.identifierStrings || []),
     ];
     const matrixMatch = this.matchMatrix(matrixCandidates, identifiers);
     if (matrixMatch) {
@@ -423,13 +493,19 @@ class DiscogsService {
       evidence.push(`Label code match (${labelCodeMatch})`);
     }
 
-    const rightsMatch = this.matchRightsSociety(ocrData.rightsSociety, identifiers);
+    const rightsMatch = this.matchRightsSociety(
+      ocrData.rightsSociety,
+      identifiers,
+    );
     if (rightsMatch) {
       score += 8;
       evidence.push(`Rights society match (${rightsMatch})`);
     }
 
-    const pressingPlantMatch = this.matchPressingPlant(ocrData.pressingPlant, identifiers);
+    const pressingPlantMatch = this.matchPressingPlant(
+      ocrData.pressingPlant,
+      identifiers,
+    );
     if (pressingPlantMatch) {
       score += 8;
       evidence.push(`Pressing plant match (${pressingPlantMatch})`);
@@ -441,18 +517,29 @@ class DiscogsService {
       evidence.push(`Label match (${labelMatch})`);
     }
 
-    if (ocrData.country && details?.country && this.normalizeText(ocrData.country) === this.normalizeText(details.country)) {
+    if (
+      ocrData.country &&
+      details?.country &&
+      this.normalizeText(ocrData.country) ===
+        this.normalizeText(details.country)
+    ) {
       score += 5;
       evidence.push(`Country match (${details.country})`);
     }
 
-    if (ocrData.year && details?.year && String(ocrData.year) === String(details.year)) {
+    if (
+      ocrData.year &&
+      details?.year &&
+      String(ocrData.year) === String(details.year)
+    ) {
       score += 5;
       evidence.push(`Year match (${details.year})`);
     }
 
     if (ocrData.format && details?.formats?.length) {
-      const formats = details.formats.map(f => f.name || f.text).filter(Boolean);
+      const formats = details.formats
+        .map((f) => f.name || f.text)
+        .filter(Boolean);
       const formatMatch = this.findBestMatchToken(formats, ocrData.format);
       if (formatMatch) {
         score += 5;
@@ -460,26 +547,36 @@ class DiscogsService {
       }
     }
 
-    const notesMatch = this.matchNotes(matrixCandidates, details?.notes || '');
+    const notesMatch = this.matchNotes(matrixCandidates, details?.notes || "");
     if (notesMatch) {
       score += 6;
       evidence.push(`Notes mention (${notesMatch})`);
     }
 
-    let confidence = 'low';
+    let confidence = "low";
     if (score >= 60 || (barcodeMatch && (catalogMatch || matrixMatch))) {
-      confidence = 'high';
+      confidence = "high";
     } else if (score >= 35) {
-      confidence = 'medium';
+      confidence = "medium";
     }
 
     return { score, evidence, confidence };
   }
 
   async matchReleaseFromOcr(ocrData, limit = 5) {
-    if ((!this.token && (!this.key || !this.secret)) || !ocrData?.artist || !ocrData?.title) return null;
+    if (
+      (!this.token && (!this.key || !this.secret)) ||
+      !ocrData?.artist ||
+      !ocrData?.title
+    )
+      return null;
 
-    const candidates = await this.searchReleaseCandidates(ocrData.artist, ocrData.title, ocrData.catalogueNumber, limit);
+    const candidates = await this.searchReleaseCandidates(
+      ocrData.artist,
+      ocrData.title,
+      ocrData.catalogueNumber,
+      limit,
+    );
     if (!candidates.length) return null;
 
     let bestMatch = null;
@@ -493,7 +590,7 @@ class DiscogsService {
         release: details,
         score: scored.score,
         evidence: scored.evidence,
-        confidence: scored.confidence
+        confidence: scored.confidence,
       };
 
       if (!bestMatch || matchInfo.score > bestMatch.score) {

@@ -1,11 +1,11 @@
 class StatCard extends HTMLElement {
   static get observedAttributes() {
-    return ['icon', 'label', 'value', 'trend'];
+    return ["icon", "label", "value", "trend"];
   }
 
   connectedCallback() {
     if (!this.shadowRoot) {
-      this.attachShadow({ mode: 'open' });
+      this.attachShadow({ mode: "open" });
     }
     this.render();
   }
@@ -15,10 +15,14 @@ class StatCard extends HTMLElement {
   }
 
   render() {
-    const icon = this.getAttribute('icon') || 'activity';
-    const label = this.getAttribute('label') || 'Stat';
-    const value = this.getAttribute('value') || '-';
-    const trend = this.getAttribute('trend') || '';
+    if (!this.shadowRoot) {
+      this.attachShadow({ mode: "open" });
+    }
+
+    const icon = this.getAttribute("icon") || "activity";
+    const label = this.getAttribute("label") || "Stat";
+    const value = this.getAttribute("value") || "-";
+    const trend = this.getAttribute("trend") || "";
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -81,7 +85,7 @@ class StatCard extends HTMLElement {
               ${this.getIconPath(icon)}
             </svg>
           </div>
-          <span class="trend ${trend.includes('+') ? '' : 'neutral'}">${trend}</span>
+          <span class="trend ${trend.includes("+") ? "" : "neutral"}">${trend}</span>
         </div>
         <p class="label">${label}</p>
         <p class="value">${value}</p>
@@ -91,14 +95,18 @@ class StatCard extends HTMLElement {
 
   getIconPath(name) {
     const icons = {
-      'check-circle': '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
-      'trending-up': '<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
-      'clock': '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
-      'activity': '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
-      'dollar-sign': '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'
+      "check-circle":
+        '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+      "trending-up":
+        '<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
+      clock:
+        '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+      activity: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+      "dollar-sign":
+        '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
     };
-    return icons[name] || icons['activity'];
+    return icons[name] || icons["activity"];
   }
 }
 
-customElements.define('stat-card', StatCard);
+customElements.define("stat-card", StatCard);

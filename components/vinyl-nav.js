@@ -1,7 +1,7 @@
 class VinylNav extends HTMLElement {
   connectedCallback() {
     if (!this.shadowRoot) {
-      this.attachShadow({ mode: 'open' });
+      this.attachShadow({ mode: "open" });
     }
     this.shadowRoot.innerHTML = `
       <style>
@@ -126,4 +126,4 @@ class VinylNav extends HTMLElement {
   }
 }
 
-customElements.define('vinyl-nav', VinylNav);
+customElements.define("vinyl-nav", VinylNav);

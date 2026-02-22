@@ -1,15 +1,14 @@
-
 class DeepseekService {
   constructor() {
-    this.apiKey = localStorage.getItem('deepseek_api_key');
-    this.model = localStorage.getItem('deepseek_model') || 'deepseek-chat';
-    this.baseUrl = 'https://api.deepseek.com/v1';
+    this.apiKey = localStorage.getItem("deepseek_api_key");
+    this.model = localStorage.getItem("deepseek_model") || "deepseek-chat";
+    this.baseUrl = "https://api.deepseek.com/v1";
   }
 
   isVisionModel(modelName) {
     if (!modelName) return false;
     const normalized = modelName.toLowerCase();
-    return normalized.includes('vl') || normalized.includes('vision');
+    return normalized.includes("vl") || normalized.includes("vision");
   }
 
   async parseError(response, fallbackMessage) {
@@ -40,20 +39,24 @@ class DeepseekService {
 
   async analyzeRecordImages(imageFiles) {
     if (!this.apiKey) {
-      throw new Error('DeepSeek API key not configured. Please add it in Settings.');
+      throw new Error(
+        "DeepSeek API key not configured. Please add it in Settings.",
+      );
     }
 
     const base64Images = await Promise.all(
-      imageFiles.map(file => this.fileToBase64(file))
+      imageFiles.map((file) => this.fileToBase64(file)),
     );
 
     if (!this.isVisionModel(this.model)) {
-      throw new Error('Selected DeepSeek model does not support image analysis. Please choose a DeepSeek vision model (for example a VL model) or switch provider to OpenAI for OCR.');
+      throw new Error(
+        "Selected DeepSeek model does not support image analysis. Please choose a DeepSeek vision model (for example a VL model) or switch provider to OpenAI for OCR.",
+      );
     }
 
     const messages = [
       {
-        role: 'system',
+        role: "system",
         content: `You are a vinyl record identification expert specializing in pressing identification. Analyze record images and extract all visible information with special attention to first press vs reissue identification.
 
 CRITICAL - Pressing Identification Rules:
@@ -113,61 +116,66 @@ Return ONLY a JSON object with this exact structure:
   "notes": "array of strings with additional observations"
 }
 
-Be precise. Only include info you can clearly read. For pressing identification, be conservative - only mark as first press if you see strong evidence (A1/B1 stampers, specific plant codes matching known first presses, etc.).`
+Be precise. Only include info you can clearly read. For pressing identification, be conservative - only mark as first press if you see strong evidence (A1/B1 stampers, specific plant codes matching known first presses, etc.).`,
       },
       {
-        role: 'user',
+        role: "user",
         content: [
           {
-            type: 'text',
-            text: 'Analyze these record photos. Identify the artist, title, catalogue number, label, year, and CRITICALLY: examine the deadwax/matrix area and labels closely to determine if this is a first pressing, repress, or reissue. Explicitly extract Matrix Side A and Matrix Side B runouts separately whenever visible, and report any plant codes or label variations you can see.'
+            type: "text",
+            text: "Analyze these record photos. Identify the artist, title, catalogue number, label, year, and CRITICALLY: examine the deadwax/matrix area and labels closely to determine if this is a first pressing, repress, or reissue. Explicitly extract Matrix Side A and Matrix Side B runouts separately whenever visible, and report any plant codes or label variations you can see.",
           },
-          ...base64Images.map(base64 => ({
-            type: 'image_url',
+          ...base64Images.map((base64) => ({
+            type: "image_url",
             image_url: {
               url: `data:image/jpeg;base64,${base64}`,
-              detail: 'high'
-            }
-          }))
-        ]
-      }
+              detail: "high",
+            },
+          })),
+        ],
+      },
     ];
 
     try {
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify({
           model: this.model,
           messages: messages,
           max_tokens: 2000,
-          temperature: 0.2
-        })
+          temperature: 0.2,
+        }),
       });
 
       if (!response.ok) {
-        const errorMessage = await this.parseError(response, 'DeepSeek analysis failed');
+        const errorMessage = await this.parseError(
+          response,
+          "DeepSeek analysis failed",
+        );
         throw new Error(errorMessage);
       }
 
       const data = await response.json();
       const content = data.choices[0].message.content;
-      
+
       // Extract JSON from potential markdown code blocks
-      const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```|(\{[\s\S]*\})/);
-      const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[2]) : content;
-      
+      const jsonMatch = content.match(
+        /```json\s*([\s\S]*?)\s*```|(\{[\s\S]*\})/,
+      );
+      const jsonStr = jsonMatch ? jsonMatch[1] || jsonMatch[2] : content;
+
       try {
         return JSON.parse(jsonStr.trim());
       } catch (e) {
-        console.error('Failed to parse DeepSeek response:', content);
-        throw new Error('Failed to parse record data');
+        console.error("Failed to parse DeepSeek response:", content);
+        throw new Error("Failed to parse record data");
       }
     } catch (error) {
-      console.error('DeepSeek Analysis Error:', error);
+      console.error("DeepSeek Analysis Error:", error);
       throw error;
     }
   }
@@ -176,7 +184,7 @@ Be precise. Only include info you can clearly read. For pressing identification,
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
-        const base64 = reader.result.split(',')[1];
+        const base64 = reader.result.split(",")[1];
         resolve(base64);
       };
       reader.onerror = reject;
