@@ -6,6 +6,26 @@ class DeepseekService {
     this.baseUrl = 'https://api.deepseek.com/v1';
   }
 
+  isVisionModel(modelName) {
+    if (!modelName) return false;
+    const normalized = modelName.toLowerCase();
+    return normalized.includes('vl') || normalized.includes('vision');
+  }
+
+  async parseError(response, fallbackMessage) {
+    const rawBody = await response.text();
+    if (!rawBody) {
+      return fallbackMessage;
+    }
+
+    try {
+      const parsed = JSON.parse(rawBody);
+      return parsed.error?.message || parsed.message || fallbackMessage;
+    } catch {
+      return rawBody;
+    }
+  }
+
   updateApiKey(key) {
     this.apiKey = key;
   }
@@ -26,6 +46,10 @@ class DeepseekService {
     const base64Images = await Promise.all(
       imageFiles.map(file => this.fileToBase64(file))
     );
+
+    if (!this.isVisionModel(this.model)) {
+      throw new Error('Selected DeepSeek model does not support image analysis. Please choose a DeepSeek vision model (for example a VL model) or switch provider to OpenAI for OCR.');
+    }
 
     const messages = [
       {
@@ -125,8 +149,8 @@ Be precise. Only include info you can clearly read. For pressing identification,
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'DeepSeek analysis failed');
+        const errorMessage = await this.parseError(response, 'DeepSeek analysis failed');
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
