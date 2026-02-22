@@ -363,6 +363,7 @@ class DiscogsService {
     (release.artists || []).forEach((artist) => pushSignal(artist?.name));
     (release.labels || []).forEach((label) => pushSignal(label?.name));
     (release.images || []).forEach((image) => {
+      // Only use semantic metadata (e.g., image type) as signals, not full URLs.
       pushSignal(image?.type);
     });
 

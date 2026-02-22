@@ -556,6 +556,9 @@ class AIChat extends HTMLElement {
 
   isDiscogsCorrectionMessage(message) {
     const normalized = (message || "").toLowerCase();
+
+    // Look for more explicit correction-intent phrases to avoid
+    // treating generic Discogs questions as corrections.
     const patterns = [
       /\bthis is the correct\b.*discogs/,
       /\buse this\b.*discogs/,
@@ -563,6 +566,7 @@ class AIChat extends HTMLElement {
       /\bdiscogs\b.*\bcorrect release\b/,
       /\bhere'?s the correct\b.*discogs/,
     ];
+
     return patterns.some((pattern) => pattern.test(normalized));
   }
 
