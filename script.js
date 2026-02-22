@@ -1782,12 +1782,141 @@ async function cleanupHostedImages() {
         window.currentListingImages = [];
     }
 }
+
+const LISTING_PROGRESS_CACHE_KEY = 'vinyl_listing_progress_v1';
+const LISTING_PROGRESS_FIELD_IDS = [
+    'artistInput',
+    'titleInput',
+    'catInput',
+    'yearInput',
+    'matrixSideAInput',
+    'matrixSideBInput',
+    'costInput',
+    'daysOwnedInput',
+    'vinylConditionInput',
+    'sleeveConditionInput',
+    'goalSelect',
+    'marketSelect'
+];
+
+function debounce(callback, wait = 300) {
+    let timeout;
+    return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => callback(...args), wait);
+    };
+}
+
+function collectListingProgress() {
+    const fields = {};
+    LISTING_PROGRESS_FIELD_IDS.forEach((id) => {
+        const element = document.getElementById(id);
+        if (element) {
+            fields[id] = element.value;
+        }
+    });
+
+    return {
+        version: 1,
+        savedAt: new Date().toISOString(),
+        fields,
+        outputs: {
+            titleOptionsHtml: document.getElementById('titleOptions')?.innerHTML || '',
+            htmlOutput: document.getElementById('htmlOutput')?.value || '',
+            tagsOutputHtml: document.getElementById('tagsOutput')?.innerHTML || '',
+            pricingStrategyHtml: document.getElementById('pricingStrategy')?.innerHTML || '',
+            feeFloorHtml: document.getElementById('feeFloor')?.innerHTML || '',
+            shotListHtml: document.getElementById('shotList')?.innerHTML || ''
+        }
+    };
+}
+
+function saveListingProgressToCache() {
+    const snapshot = collectListingProgress();
+    localStorage.setItem(LISTING_PROGRESS_CACHE_KEY, JSON.stringify(snapshot));
+}
+
+function restoreListingProgressFromCache() {
+    const cached = localStorage.getItem(LISTING_PROGRESS_CACHE_KEY);
+    if (!cached) return;
+
+    try {
+        const parsed = JSON.parse(cached);
+        if (!parsed?.fields) return;
+
+        Object.entries(parsed.fields).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element && typeof value === 'string') {
+                element.value = value;
+            }
+        });
+
+        const outputs = parsed.outputs || {};
+        if (outputs.titleOptionsHtml) document.getElementById('titleOptions').innerHTML = outputs.titleOptionsHtml;
+        if (outputs.htmlOutput) document.getElementById('htmlOutput').value = outputs.htmlOutput;
+        if (outputs.tagsOutputHtml) document.getElementById('tagsOutput').innerHTML = outputs.tagsOutputHtml;
+        if (outputs.pricingStrategyHtml) document.getElementById('pricingStrategy').innerHTML = outputs.pricingStrategyHtml;
+        if (outputs.feeFloorHtml) document.getElementById('feeFloor').innerHTML = outputs.feeFloorHtml;
+        if (outputs.shotListHtml) document.getElementById('shotList').innerHTML = outputs.shotListHtml;
+
+        const hasGeneratedOutput = Boolean(
+            outputs.titleOptionsHtml || outputs.htmlOutput || outputs.tagsOutputHtml
+        );
+
+        if (hasGeneratedOutput) {
+            resultsSection?.classList.remove('hidden');
+            emptyState?.classList.add('hidden');
+            updateProgressSteps(3);
+        } else {
+            updateProgressSteps(1);
+        }
+
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+
+        showToast('Restored your saved listing progress.', 'info');
+    } catch (error) {
+        console.error('Failed to restore listing progress cache', error);
+    }
+}
+
+function setupListingProgressAutosave() {
+    const debouncedSave = debounce(saveListingProgressToCache, 400);
+    LISTING_PROGRESS_FIELD_IDS.forEach((id) => {
+        const element = document.getElementById(id);
+        if (!element) return;
+        element.addEventListener('input', debouncedSave);
+        element.addEventListener('change', debouncedSave);
+    });
+
+    ['titleOptions', 'pricingStrategy', 'feeFloor', 'tagsOutput', 'shotList'].forEach((id) => {
+        const target = document.getElementById(id);
+        if (!target) return;
+
+        const observer = new MutationObserver(() => debouncedSave());
+        observer.observe(target, { childList: true, subtree: true, characterData: true });
+    });
+
+    const htmlOutput = document.getElementById('htmlOutput');
+    if (htmlOutput) {
+        htmlOutput.addEventListener('input', debouncedSave);
+    }
+
+    window.addEventListener('beforeunload', () => {
+        saveListingProgressToCache();
+    });
+
+    restoreListingProgressFromCache();
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     console.log('VinylVault Pro initialized');
     
     // Initialize drop zone
     initDropZone();
+    setupListingProgressAutosave();
     
     // Attach event listeners to buttons
     const generateBtn = document.getElementById('generateListingBtn');
