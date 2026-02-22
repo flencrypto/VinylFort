@@ -550,24 +550,40 @@ class AIChat extends HTMLElement {
 
   extractDiscogsReleaseUrl(message) {
     if (!message) return null;
-    const match = message.match(/https?:\/\/(?:www\.)?discogs\.com\/release\/\d+[^\s]*/i);
+    // Match both short form (discogs.com/release/ID) and full form
+    // (discogs.com/Artist-Title/release/ID) used by the Discogs website.
+    const match = message.match(
+      /https?:\/\/(?:www\.)?discogs\.com(?:\/[^\/\s]+)?\/release\/\d+[^\s]*/i,
+    );
     return match ? match[0] : null;
   }
 
   isDiscogsCorrectionMessage(message) {
     const normalized = (message || "").toLowerCase();
 
-    // Look for more explicit correction-intent phrases to avoid
-    // treating generic Discogs questions as corrections.
+    // Explicit correction-intent phrases (word "discogs" may appear only in URL).
     const patterns = [
-      /\bthis is the correct\b.*discogs/,
-      /\buse this\b.*discogs/,
+      /\bthis is the correct\b/,
+      /\buse this\b/,
       /\bcorrect discogs release\b/,
       /\bdiscogs\b.*\bcorrect release\b/,
-      /\bhere'?s the correct\b.*discogs/,
+      /\bhere'?s the correct\b/,
+      /\bthe correct release\b/,
+      /\bthis is it\b/,
+      /\bfound it\b/,
     ];
 
-    return patterns.some((pattern) => pattern.test(normalized));
+    if (patterns.some((pattern) => pattern.test(normalized))) {
+      return true;
+    }
+
+    // Treat a message that is primarily a Discogs URL as a correction intent
+    // (e.g. user pastes just the URL, or "here: <url>").
+    // Limit to at most one non-URL word to avoid false positives on questions
+    // such as "What's this? <url>".
+    const withoutUrl = normalized.replace(/https?:\/\/\S+/gi, "").trim();
+    const words = withoutUrl.split(/\s+/).filter((w) => w.length > 0);
+    return words.length <= 1;
   }
 
   processUserMessage(message) {
