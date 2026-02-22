@@ -382,7 +382,7 @@ class DiscogsService {
     let score = 0;
     uploadedPhotoHints.forEach((hint) => {
       const normalizedHint = this.normalizeText(hint);
-      if (!normalizedHint || normalizedHint.length < 4) return;
+      if (!normalizedHint || normalizedHint.length < 3) return;
       const matchedSignal = releaseSignals.find(
         (signal) =>
           signal.includes(normalizedHint) || normalizedHint.includes(signal),
