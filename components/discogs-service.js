@@ -362,10 +362,11 @@ class DiscogsService {
     pushSignal(release.title);
     (release.artists || []).forEach((artist) => pushSignal(artist?.name));
     (release.labels || []).forEach((label) => pushSignal(label?.name));
-    (release.images || []).forEach((image) => {
-      // Only use semantic metadata (e.g., image type) as signals, not full URLs.
-      pushSignal(image?.type);
-    });
+    // Include styles and genres as signals so photo filenames that mention
+    // the genre/style can contribute to the match score.
+    (release.styles || []).forEach((style) => pushSignal(style));
+    (release.genres || []).forEach((genre) => pushSignal(genre));
+    if (release.country) pushSignal(release.country);
 
     return Array.from(signals);
   }

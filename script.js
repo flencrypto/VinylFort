@@ -683,6 +683,13 @@ async function analyzePhotosWithOCR() {
     stopAnalysisProgress();
     populateFieldsFromOCR(result);
 
+    // Sync detection results into the AI chat so it can use them when the
+    // user later pastes a Discogs URL for correction.
+    const aiChatForOcr = document.getElementById("aiChatBox");
+    if (aiChatForOcr?.showDetectionResults) {
+      aiChatForOcr.showDetectionResults(result);
+    }
+
     // Try to fetch additional data from Discogs with pressing-aware matching
     if (result.artist && result.title && window.discogsService) {
       try {
@@ -1043,6 +1050,24 @@ function updateDiscogsMatchPanel(match) {
            </ul>`
     : '<p class="text-xs text-gray-500">No strong identifiers matched. Verify manually.</p>';
 
+  // Build a thumbnail strip from the release images so the user can visually
+  // compare the Discogs cover art with the photos they uploaded.
+  const releaseImages = match.release.images || [];
+  const thumbnailHtml = releaseImages.length
+    ? `<div class="mt-2 pt-2 border-t border-blue-500/20">
+           <p class="text-xs text-gray-400 mb-1">Compare with Discogs images:</p>
+           <div class="flex gap-2 flex-wrap">
+               ${releaseImages
+                 .slice(0, 4)
+                 .map(
+                   (img) =>
+                     `<img src="${img.uri150 || img.uri}" alt="Discogs release image" class="w-16 h-16 object-cover rounded border border-blue-500/30" loading="lazy" referrerpolicy="no-referrer">`,
+                 )
+                 .join("")}
+           </div>
+       </div>`
+    : "";
+
   panel.className =
     "mt-3 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg";
   panel.innerHTML = `
@@ -1052,6 +1077,7 @@ function updateDiscogsMatchPanel(match) {
         </div>
         <div class="text-xs text-gray-400 mb-2">Match score: ${match.score}</div>
         ${evidenceList}
+        ${thumbnailHtml}
         <div class="mt-2 pt-2 border-t border-blue-500/20">
             <a href="https://www.discogs.com/release/${match.release.id}" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-400 hover:underline">View matched release →</a>
         </div>
@@ -1098,10 +1124,32 @@ async function applyDiscogsCorrectionFromUrl(url, currentDetection = {}) {
     return;
   }
 
+  // Enrich currentDetection with any OCR-derived window globals so the
+  // scoring function has real data even when the AI chat hasn't been
+  // explicitly populated yet (e.g. the user pastes a URL straight away).
+  const enrichedDetection = {
+    label: window.detectedLabel || null,
+    country: window.detectedCountry || null,
+    format: window.detectedFormat || null,
+    genre: window.detectedGenre || null,
+    barcode: window.detectedBarcode || null,
+    matrixRunoutA: window.detectedMatrixRunoutA || null,
+    matrixRunoutB: window.detectedMatrixRunoutB || null,
+    pressingInfo: window.detectedPressingInfo || null,
+    labelCode: window.detectedLabelCode || null,
+    rightsSociety: window.detectedRightsSociety || null,
+    pressingPlant: window.detectedPressingPlant || null,
+    artist: document.getElementById("artistInput")?.value?.trim() || null,
+    title: document.getElementById("titleInput")?.value?.trim() || null,
+    catalogueNumber: document.getElementById("catInput")?.value?.trim() || null,
+    year: document.getElementById("yearInput")?.value?.trim() || null,
+    ...currentDetection,
+  };
+
   const photoHints = getUploadedPhotoHints();
   const match = await window.discogsService.resolveReleaseCorrection(
     url,
-    currentDetection,
+    enrichedDetection,
     photoHints,
   );
 
@@ -1114,8 +1162,8 @@ async function applyDiscogsCorrectionFromUrl(url, currentDetection = {}) {
   populateFieldsFromDiscogs(match.release);
   updateDiscogsMatchPanel(match);
 
-  const mergedDetection = mergeReleaseIntoDetection(currentDetection, match.release);
-  populateFieldsFromOCR(mergedDetection);
+  const mergedDetection = mergeReleaseIntoDetection(enrichedDetection, match.release);
+  populateFieldsFromOCR({ ...mergedDetection, confidence: match.confidence });
 
   const aiChat = document.getElementById("aiChatBox");
   if (aiChat?.showDetectionResults) {
