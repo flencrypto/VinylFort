@@ -556,13 +556,18 @@ class AIChat extends HTMLElement {
 
   isDiscogsCorrectionMessage(message) {
     const normalized = (message || "").toLowerCase();
-    return (
-      normalized.includes("discogs") &&
-      (normalized.includes("correct") ||
-        normalized.includes("use this") ||
-        normalized.includes("match") ||
-        normalized.includes("release"))
-    );
+
+    // Look for more explicit correction-intent phrases to avoid
+    // treating generic Discogs questions as corrections.
+    const patterns = [
+      /\bthis is the correct\b.*discogs/,
+      /\buse this\b.*discogs/,
+      /\bcorrect discogs release\b/,
+      /\bdiscogs\b.*\bcorrect release\b/,
+      /\bhere'?s the correct\b.*discogs/,
+    ];
+
+    return patterns.some((pattern) => pattern.test(normalized));
   }
 
   processUserMessage(message) {
