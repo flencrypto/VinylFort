@@ -1,5 +1,6 @@
 class DiscogsService {
   constructor() {
+    this.token = localStorage.getItem('discogs_token');
     this.key = localStorage.getItem('discogs_key');
     this.secret = localStorage.getItem('discogs_secret');
     this.baseUrl = 'https://api.discogs.com';
@@ -11,9 +12,10 @@ class DiscogsService {
     };
   }
 
-  updateCredentials(key, secret) {
+  updateCredentials(key, secret, token) {
     this.key = key;
     this.secret = secret;
+    this.token = token;
   }
 
   getHeaders() {
@@ -22,7 +24,10 @@ class DiscogsService {
       'Accept': 'application/vnd.discogs.v2.plaintext+json'
     };
     
-    if (this.key && this.secret) {
+    // Prefer token-based authentication if available
+    if (this.token) {
+      headers['Authorization'] = `Discogs token=${this.token}`;
+    } else if (this.key && this.secret) {
       headers['Authorization'] = `Discogs key=${this.key}, secret=${this.secret}`;
     }
     
@@ -151,7 +156,7 @@ class DiscogsService {
   }
 
   async testConnection() {
-    if (!this.key || !this.secret) {
+    if (!this.token && (!this.key || !this.secret)) {
       throw new Error('Discogs API credentials not configured');
     }
 
@@ -164,7 +169,7 @@ class DiscogsService {
   }
 
   async searchRelease(artist, title, catNo) {
-    if (!this.key || !this.secret) return null;
+    if (!this.token && (!this.key || !this.secret)) return null;
 
     let query = '';
     if (artist) query += artist;
@@ -189,7 +194,7 @@ class DiscogsService {
   }
 
   async searchReleaseCandidates(artist, title, catNo, limit = 5) {
-    if (!this.key || !this.secret) return [];
+    if (!this.token && (!this.key || !this.secret)) return [];
 
     let query = '';
     if (artist) query += artist;
@@ -213,7 +218,7 @@ class DiscogsService {
     }
   }
   async getReleaseDetails(releaseId) {
-    if (!this.key || !this.secret) return null;
+    if (!this.token && (!this.key || !this.secret)) return null;
 
     try {
       const response = await this.fetchWithRetry(`${this.baseUrl}/releases/${releaseId}`, {
@@ -229,7 +234,7 @@ class DiscogsService {
   }
 
   async fetchTracklist(releaseId) {
-    if (!this.key || !this.secret || !releaseId) return null;
+    if ((!this.token && (!this.key || !this.secret)) || !releaseId) return null;
     
     try {
       const details = await this.getReleaseDetails(releaseId);
@@ -255,7 +260,7 @@ class DiscogsService {
   }
 
   async fetchMasterReleaseDetails(masterId) {
-    if (!this.key || !this.secret || !masterId) return null;
+    if ((!this.token && (!this.key || !this.secret)) || !masterId) return null;
     
     try {
       const response = await this.fetchWithRetry(`${this.baseUrl}/masters/${masterId}`, {
@@ -271,7 +276,7 @@ class DiscogsService {
   }
 
   async searchByBarcode(barcode) {
-    if (!this.key || !this.secret || !barcode) return null;
+    if ((!this.token && (!this.key || !this.secret)) || !barcode) return null;
     
     try {
       const response = await this.fetchWithRetry(
@@ -472,7 +477,7 @@ class DiscogsService {
   }
 
   async matchReleaseFromOcr(ocrData, limit = 5) {
-    if (!this.key || !this.secret || !ocrData?.artist || !ocrData?.title) return null;
+    if ((!this.token && (!this.key || !this.secret)) || !ocrData?.artist || !ocrData?.title) return null;
 
     const candidates = await this.searchReleaseCandidates(ocrData.artist, ocrData.title, ocrData.catalogueNumber, limit);
     if (!candidates.length) return null;

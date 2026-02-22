@@ -218,6 +218,30 @@
                     </div>
                 </div>
                 <div class="space-y-4">
+                    <!-- Personal Access Token (Preferred) -->
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-2">
+                            Personal Access Token 
+                            <span class="text-xs text-gray-600">(Recommended - simpler authentication)</span>
+                        </label>
+                        <div class="relative">
+                            <input type="password" id="discogsToken" placeholder="Your Discogs personal access token" 
+                                class="w-full px-4 py-3 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm pr-10"
+                                aria-label="Discogs personal access token">
+                            <button onclick="toggleDiscogsTokenVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+                                <i data-feather="eye" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Divider -->
+                    <div class="flex items-center gap-3 my-4">
+                        <div class="flex-1 border-t border-gray-700"></div>
+                        <span class="text-xs text-gray-600">OR use Consumer Key/Secret</span>
+                        <div class="flex-1 border-t border-gray-700"></div>
+                    </div>
+                    
+                    <!-- Consumer Key/Secret (Alternative) -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm text-gray-400 mb-2">Consumer Key</label>
@@ -313,6 +337,14 @@
             const maxTokens = localStorage.getItem('openai_max_tokens') || '2000';
             const deepseekKey = localStorage.getItem('deepseek_api_key');
             const deepseekModel = localStorage.getItem('deepseek_model') || 'deepseek-chat';
+            
+            // Set default Discogs token if not already configured
+            let discogsToken = localStorage.getItem('discogs_token');
+            if (!discogsToken) {
+                discogsToken = 'yTaawtvDVkIKoAHAoAgnDIhFerblgTTCNXmFDthy';
+                localStorage.setItem('discogs_token', discogsToken);
+            }
+            
             const discogsKey = localStorage.getItem('discogs_key');
             const discogsSecret = localStorage.getItem('discogs_secret');
             
@@ -333,10 +365,11 @@
             }
             document.getElementById('deepseekModel').value = deepseekModel;
             
+            if (discogsToken) document.getElementById('discogsToken').value = discogsToken;
             if (discogsKey) document.getElementById('discogsKey').value = discogsKey;
             if (discogsSecret) document.getElementById('discogsSecret').value = discogsSecret;
             
-            if (discogsKey && discogsSecret) {
+            if (discogsToken || (discogsKey && discogsSecret)) {
                 updateDiscogsStatus(true);
             }
         });
@@ -353,6 +386,11 @@
 
         function toggleDeepseekVisibility() {
             const input = document.getElementById('deepseekKey');
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
+        function toggleDiscogsTokenVisibility() {
+            const input = document.getElementById('discogsToken');
             input.type = input.type === 'password' ? 'text' : 'password';
         }
 
@@ -483,18 +521,19 @@
             }
         }
         async function testDiscogsConnection() {
+            const token = document.getElementById('discogsToken').value.trim();
             const key = document.getElementById('discogsKey').value.trim();
             const secret = document.getElementById('discogsSecret').value.trim();
             
-            if (!key || !secret) {
-                showToast('Please enter both Consumer Key and Secret', 'error');
+            if (!token && (!key || !secret)) {
+                showToast('Please enter either a Personal Access Token or both Consumer Key and Secret', 'error');
                 return;
             }
 
             const testingToast = showToast('Testing Discogs connection...', 'success', 0);
             
             try {
-                window.discogsService.updateCredentials(key, secret);
+                window.discogsService.updateCredentials(key, secret, token);
                 await window.discogsService.testConnection();
                 
                 // Remove testing toast
@@ -549,17 +588,28 @@ function saveOpenAISettings() {
         }
 
         function saveDiscogsSettings() {
+            const token = document.getElementById('discogsToken').value.trim();
             const key = document.getElementById('discogsKey').value.trim();
             const secret = document.getElementById('discogsSecret').value.trim();
 
-            if (key && secret) {
+            if (token) {
+                // Save token-based authentication and clear key/secret
+                localStorage.setItem('discogs_token', token);
+                localStorage.removeItem('discogs_key');
+                localStorage.removeItem('discogs_secret');
+                window.discogsService.updateCredentials('', '', token);
+                updateDiscogsStatus(true);
+                showToast('Discogs settings saved! (using Personal Access Token)', 'success');
+            } else if (key && secret) {
+                // Save key/secret authentication and clear token
                 localStorage.setItem('discogs_key', key);
                 localStorage.setItem('discogs_secret', secret);
-                window.discogsService.updateCredentials(key, secret);
+                localStorage.removeItem('discogs_token');
+                window.discogsService.updateCredentials(key, secret, '');
                 updateDiscogsStatus(true);
-                showToast('Discogs settings saved!', 'success');
+                showToast('Discogs settings saved! (using Consumer Key/Secret)', 'success');
             } else {
-                showToast('Please enter both key and secret', 'error');
+                showToast('Please enter either a Personal Access Token or both Consumer Key and Secret', 'error');
             }
         }
 
@@ -571,11 +621,13 @@ function saveOpenAISettings() {
                 localStorage.removeItem('deepseek_api_key');
                 localStorage.removeItem('deepseek_model');
                 localStorage.removeItem('ai_provider');
+                localStorage.removeItem('discogs_token');
                 localStorage.removeItem('discogs_key');
                 localStorage.removeItem('discogs_secret');
                 localStorage.removeItem('imgbb_api_key');
                 document.getElementById('openaiKey').value = '';
                 document.getElementById('deepseekKey').value = '';
+                document.getElementById('discogsToken').value = '';
                 document.getElementById('discogsKey').value = '';
                 document.getElementById('discogsSecret').value = '';
                 document.getElementById('imgbbKey').value = '';
