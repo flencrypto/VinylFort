@@ -547,11 +547,55 @@ class AIChat extends HTMLElement {
     this.shadowRoot.getElementById("chatInput").focus();
   }
 
+
+  extractDiscogsReleaseUrl(message) {
+    if (!message) return null;
+    const match = message.match(/https?:\/\/(?:www\.)?discogs\.com\/release\/\d+[^\s]*/i);
+    return match ? match[0] : null;
+  }
+
+  isDiscogsCorrectionMessage(message) {
+    const normalized = (message || "").toLowerCase();
+
+    // Look for more explicit correction-intent phrases to avoid
+    // treating generic Discogs questions as corrections.
+    const patterns = [
+      /\bthis is the correct\b.*discogs/,
+      /\buse this\b.*discogs/,
+      /\bcorrect discogs release\b/,
+      /\bdiscogs\b.*\bcorrect release\b/,
+      /\bhere'?s the correct\b.*discogs/,
+    ];
+
+    return patterns.some((pattern) => pattern.test(normalized));
+  }
+
   processUserMessage(message) {
     // Check if this is a correction response
     if (this.pendingCorrection) {
       this.applyCorrection(this.pendingCorrection, message);
       this.pendingCorrection = null;
+      return;
+    }
+
+    const discogsUrl = this.extractDiscogsReleaseUrl(message);
+    if (discogsUrl && this.isDiscogsCorrectionMessage(message)) {
+      this.addMessage(
+        "Got it — I'll verify this Discogs release against the detected info and uploaded photos.",
+        "ai",
+        { meta: "Applying Discogs correction" },
+      );
+
+      this.dispatchEvent(
+        new CustomEvent("discogs-release-correction", {
+          detail: {
+            url: discogsUrl,
+            currentDetection: this.getCorrectedData(),
+          },
+          bubbles: true,
+          composed: true,
+        }),
+      );
       return;
     }
 

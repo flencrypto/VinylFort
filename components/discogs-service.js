@@ -324,6 +324,78 @@ class DiscogsService {
     }
   }
 
+  extractReleaseIdFromUrl(value) {
+    if (!value) return null;
+
+    const raw = String(value).trim();
+    const directIdMatch = raw.match(/^\d+$/);
+    if (directIdMatch) return Number.parseInt(directIdMatch[0], 10);
+
+    try {
+      const normalized = raw.startsWith("http") ? raw : `https://${raw}`;
+      const parsed = new URL(normalized);
+      if (!parsed.hostname.toLowerCase().includes("discogs.com")) {
+        return null;
+      }
+
+      const pathMatch = parsed.pathname.match(/\/release\/(\d+)/i);
+      if (pathMatch) {
+        return Number.parseInt(pathMatch[1], 10);
+      }
+    } catch (_error) {
+      return null;
+    }
+
+    return null;
+  }
+
+  getReleasePhotoSignals(release) {
+    if (!release) return [];
+
+    const signals = new Set();
+    const pushSignal = (value) => {
+      if (!value) return;
+      const token = this.normalizeText(value);
+      if (token) signals.add(token);
+    };
+
+    pushSignal(release.title);
+    (release.artists || []).forEach((artist) => pushSignal(artist?.name));
+    (release.labels || []).forEach((label) => pushSignal(label?.name));
+    (release.images || []).forEach((image) => {
+      // Only use semantic metadata (e.g., image type) as signals, not full URLs.
+      pushSignal(image?.type);
+    });
+
+    return Array.from(signals);
+  }
+
+  scoreUploadedPhotoHints(uploadedPhotoHints, release) {
+    if (!Array.isArray(uploadedPhotoHints) || !uploadedPhotoHints.length) {
+      return { score: 0, evidence: [] };
+    }
+
+    const releaseSignals = this.getReleasePhotoSignals(release);
+    if (!releaseSignals.length) return { score: 0, evidence: [] };
+
+    const evidence = [];
+    let score = 0;
+    uploadedPhotoHints.forEach((hint) => {
+      const normalizedHint = this.normalizeText(hint);
+      if (!normalizedHint || normalizedHint.length < 3) return;
+      const matchedSignal = releaseSignals.find(
+        (signal) =>
+          signal.includes(normalizedHint) || normalizedHint.includes(signal),
+      );
+      if (matchedSignal) {
+        score += 5;
+        evidence.push(`Photo hint matched release metadata (${hint})`);
+      }
+    });
+
+    return { score, evidence };
+  }
+
   normalizeText(value) {
     if (!value) return "";
     return String(value)
@@ -599,6 +671,39 @@ class DiscogsService {
     }
 
     return bestMatch;
+  }
+
+  async resolveReleaseCorrection(reference, ocrData = {}, uploadedPhotoHints = []) {
+    const releaseId = this.extractReleaseIdFromUrl(reference);
+    if (!releaseId) return null;
+
+    const release = await this.getReleaseDetails(releaseId);
+    if (!release) return null;
+
+    const scored = this.scoreReleaseMatch(ocrData || {}, release);
+    const photoScored = this.scoreUploadedPhotoHints(uploadedPhotoHints, release);
+    const totalScore = scored.score + photoScored.score;
+    const combinedEvidence = [...scored.evidence, ...photoScored.evidence];
+
+    // Start from the confidence determined by scoreReleaseMatch (which includes
+    // special handling such as barcode + catalog/matrix combinations), and only
+    // upgrade it based on the combined totalScore.
+    let confidence = scored.confidence || "low";
+    if (confidence !== "high") {
+      if (totalScore >= 60) {
+        confidence = "high";
+      } else if (totalScore >= 35 && confidence !== "medium") {
+        confidence = "medium";
+      }
+    }
+
+    return {
+      release,
+      score: totalScore,
+      confidence,
+      evidence: combinedEvidence,
+      source: "manual_discogs_url",
+    };
   }
 }
 
