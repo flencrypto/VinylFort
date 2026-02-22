@@ -1058,6 +1058,76 @@ function updateDiscogsMatchPanel(match) {
     `;
   if (typeof feather !== "undefined") feather.replace();
 }
+
+function getUploadedPhotoHints() {
+  return uploadedPhotos.flatMap((file) => {
+    if (!file?.name) return [];
+    return file.name
+      .split(/[^a-zA-Z0-9]+/)
+      .map((token) => token.trim())
+      .filter((token) => token.length >= 3);
+  });
+}
+
+function mergeReleaseIntoDetection(currentDetection, release) {
+  if (!release) return currentDetection || {};
+
+  const artistName = release.artists?.[0]?.name?.replace(/\s*\(\d+\)$/, "") || null;
+  const labelName = release.labels?.[0]?.name || null;
+  const catalogueNumber =
+    release.labels?.[0]?.catno || currentDetection?.catalogueNumber || null;
+  const formatName = release.formats?.[0]?.name || null;
+  const genre = Array.isArray(release.genres) ? release.genres.join(", ") : release.genres;
+
+  return {
+    ...(currentDetection || {}),
+    artist: artistName || currentDetection?.artist || null,
+    title: release.title || currentDetection?.title || null,
+    year: release.year || currentDetection?.year || null,
+    label: labelName || currentDetection?.label || null,
+    catalogueNumber,
+    country: release.country || currentDetection?.country || null,
+    format: formatName || currentDetection?.format || null,
+    genre: genre || currentDetection?.genre || null,
+  };
+}
+
+async function applyDiscogsCorrectionFromUrl(url, currentDetection = {}) {
+  if (!window.discogsService) {
+    showToast("Discogs service is unavailable", "error");
+    return;
+  }
+
+  const photoHints = getUploadedPhotoHints();
+  const match = await window.discogsService.resolveReleaseCorrection(
+    url,
+    currentDetection,
+    photoHints,
+  );
+
+  if (!match?.release) {
+    showToast("Could not verify that Discogs release. Check URL and API credentials.", "warning");
+    return;
+  }
+
+  window.discogsReleaseId = match.release.id;
+  populateFieldsFromDiscogs(match.release);
+  updateDiscogsMatchPanel(match);
+
+  const mergedDetection = mergeReleaseIntoDetection(currentDetection, match.release);
+  populateFieldsFromOCR(mergedDetection);
+
+  const aiChat = document.getElementById("aiChatBox");
+  if (aiChat?.showDetectionResults) {
+    aiChat.showDetectionResults({
+      ...mergedDetection,
+      confidence: match.confidence,
+    });
+  }
+
+  showToast("Discogs correction applied and detection updated", "success");
+}
+
 function renderPhotoGrid() {
   if (uploadedPhotos.length === 0) {
     photoGrid.classList.add("hidden");
@@ -2257,6 +2327,20 @@ document.addEventListener("DOMContentLoaded", () => {
     clearCollectionBtn.addEventListener("click", clearCollectionImport);
   }
 
+  const aiChat = document.getElementById("aiChatBox");
+  if (aiChat) {
+    aiChat.addEventListener("discogs-release-correction", async (event) => {
+      try {
+        const { url, currentDetection } = event.detail || {};
+        if (!url) return;
+        await applyDiscogsCorrectionFromUrl(url, currentDetection || {});
+      } catch (error) {
+        console.error("Failed to apply Discogs correction:", error);
+        showToast(`Discogs correction failed: ${error.message}`, "error");
+      }
+    });
+  }
+
   // Warn about unsaved changes when leaving page with hosted images
   window.addEventListener("beforeunload", (e) => {
     if (hostedPhotoUrls.length > 0 && !window.listingPublished) {
@@ -3361,6 +3445,20 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initialize drop zone
   initDropZone();
 
+  const aiChat = document.getElementById("aiChatBox");
+  if (aiChat) {
+    aiChat.addEventListener("discogs-release-correction", async (event) => {
+      try {
+        const { url, currentDetection } = event.detail || {};
+        if (!url) return;
+        await applyDiscogsCorrectionFromUrl(url, currentDetection || {});
+      } catch (error) {
+        console.error("Failed to apply Discogs correction:", error);
+        showToast(`Discogs correction failed: ${error.message}`, "error");
+      }
+    });
+  }
+
   // Warn about unsaved changes when leaving page with hosted images
   window.addEventListener("beforeunload", (e) => {
     if (hostedPhotoUrls.length > 0 && !window.listingPublished) {
@@ -4289,6 +4387,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Initialize drop zone
   initDropZone();
+
+  const aiChat = document.getElementById("aiChatBox");
+  if (aiChat) {
+    aiChat.addEventListener("discogs-release-correction", async (event) => {
+      try {
+        const { url, currentDetection } = event.detail || {};
+        if (!url) return;
+        await applyDiscogsCorrectionFromUrl(url, currentDetection || {});
+      } catch (error) {
+        console.error("Failed to apply Discogs correction:", error);
+        showToast(`Discogs correction failed: ${error.message}`, "error");
+      }
+    });
+  }
 
   // Warn about unsaved changes when leaving page with hosted images
   window.addEventListener("beforeunload", (e) => {
@@ -5327,6 +5439,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Initialize drop zone
   initDropZone();
+
+  const aiChat = document.getElementById("aiChatBox");
+  if (aiChat) {
+    aiChat.addEventListener("discogs-release-correction", async (event) => {
+      try {
+        const { url, currentDetection } = event.detail || {};
+        if (!url) return;
+        await applyDiscogsCorrectionFromUrl(url, currentDetection || {});
+      } catch (error) {
+        console.error("Failed to apply Discogs correction:", error);
+        showToast(`Discogs correction failed: ${error.message}`, "error");
+      }
+    });
+  }
 
   // Warn about unsaved changes when leaving page with hosted images
   window.addEventListener("beforeunload", (e) => {
@@ -6370,6 +6496,20 @@ document.addEventListener("DOMContentLoaded", () => {
     clearCollectionBtn.addEventListener("click", clearCollectionImport);
   }
 
+  const aiChat = document.getElementById("aiChatBox");
+  if (aiChat) {
+    aiChat.addEventListener("discogs-release-correction", async (event) => {
+      try {
+        const { url, currentDetection } = event.detail || {};
+        if (!url) return;
+        await applyDiscogsCorrectionFromUrl(url, currentDetection || {});
+      } catch (error) {
+        console.error("Failed to apply Discogs correction:", error);
+        showToast(`Discogs correction failed: ${error.message}`, "error");
+      }
+    });
+  }
+
   // Warn about unsaved changes when leaving page with hosted images
   window.addEventListener("beforeunload", (e) => {
     if (hostedPhotoUrls.length > 0 && !window.listingPublished) {
@@ -7474,6 +7614,20 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initialize drop zone
   initDropZone();
 
+  const aiChat = document.getElementById("aiChatBox");
+  if (aiChat) {
+    aiChat.addEventListener("discogs-release-correction", async (event) => {
+      try {
+        const { url, currentDetection } = event.detail || {};
+        if (!url) return;
+        await applyDiscogsCorrectionFromUrl(url, currentDetection || {});
+      } catch (error) {
+        console.error("Failed to apply Discogs correction:", error);
+        showToast(`Discogs correction failed: ${error.message}`, "error");
+      }
+    });
+  }
+
   // Warn about unsaved changes when leaving page with hosted images
   window.addEventListener("beforeunload", (e) => {
     if (hostedPhotoUrls.length > 0 && !window.listingPublished) {
@@ -8520,6 +8674,20 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initialize drop zone
   initDropZone();
 
+  const aiChat = document.getElementById("aiChatBox");
+  if (aiChat) {
+    aiChat.addEventListener("discogs-release-correction", async (event) => {
+      try {
+        const { url, currentDetection } = event.detail || {};
+        if (!url) return;
+        await applyDiscogsCorrectionFromUrl(url, currentDetection || {});
+      } catch (error) {
+        console.error("Failed to apply Discogs correction:", error);
+        showToast(`Discogs correction failed: ${error.message}`, "error");
+      }
+    });
+  }
+
   // Warn about unsaved changes when leaving page with hosted images
   window.addEventListener("beforeunload", (e) => {
     if (hostedPhotoUrls.length > 0 && !window.listingPublished) {
@@ -9557,6 +9725,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Initialize drop zone
   initDropZone();
+
+  const aiChat = document.getElementById("aiChatBox");
+  if (aiChat) {
+    aiChat.addEventListener("discogs-release-correction", async (event) => {
+      try {
+        const { url, currentDetection } = event.detail || {};
+        if (!url) return;
+        await applyDiscogsCorrectionFromUrl(url, currentDetection || {});
+      } catch (error) {
+        console.error("Failed to apply Discogs correction:", error);
+        showToast(`Discogs correction failed: ${error.message}`, "error");
+      }
+    });
+  }
 
   // Warn about unsaved changes when leaving page with hosted images
   window.addEventListener("beforeunload", (e) => {
