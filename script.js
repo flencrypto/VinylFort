@@ -3445,19 +3445,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initialize drop zone
   initDropZone();
 
-  const aiChat = document.getElementById("aiChatBox");
-  if (aiChat) {
-    aiChat.addEventListener("discogs-release-correction", async (event) => {
-      try {
-        const { url, currentDetection } = event.detail || {};
-        if (!url) return;
-        await applyDiscogsCorrectionFromUrl(url, currentDetection || {});
-      } catch (error) {
-        console.error("Failed to apply Discogs correction:", error);
-        showToast(`Discogs correction failed: ${error.message}`, "error");
-      }
-    });
-  }
 
   // Warn about unsaved changes when leaving page with hosted images
   window.addEventListener("beforeunload", (e) => {
@@ -4388,19 +4375,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initialize drop zone
   initDropZone();
 
-  const aiChat = document.getElementById("aiChatBox");
-  if (aiChat) {
-    aiChat.addEventListener("discogs-release-correction", async (event) => {
-      try {
-        const { url, currentDetection } = event.detail || {};
-        if (!url) return;
-        await applyDiscogsCorrectionFromUrl(url, currentDetection || {});
-      } catch (error) {
-        console.error("Failed to apply Discogs correction:", error);
-        showToast(`Discogs correction failed: ${error.message}`, "error");
-      }
-    });
-  }
 
   // Warn about unsaved changes when leaving page with hosted images
   window.addEventListener("beforeunload", (e) => {
@@ -5440,19 +5414,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initialize drop zone
   initDropZone();
 
-  const aiChat = document.getElementById("aiChatBox");
-  if (aiChat) {
-    aiChat.addEventListener("discogs-release-correction", async (event) => {
-      try {
-        const { url, currentDetection } = event.detail || {};
-        if (!url) return;
-        await applyDiscogsCorrectionFromUrl(url, currentDetection || {});
-      } catch (error) {
-        console.error("Failed to apply Discogs correction:", error);
-        showToast(`Discogs correction failed: ${error.message}`, "error");
-      }
-    });
-  }
 
   // Warn about unsaved changes when leaving page with hosted images
   window.addEventListener("beforeunload", (e) => {
@@ -6496,19 +6457,6 @@ document.addEventListener("DOMContentLoaded", () => {
     clearCollectionBtn.addEventListener("click", clearCollectionImport);
   }
 
-  const aiChat = document.getElementById("aiChatBox");
-  if (aiChat) {
-    aiChat.addEventListener("discogs-release-correction", async (event) => {
-      try {
-        const { url, currentDetection } = event.detail || {};
-        if (!url) return;
-        await applyDiscogsCorrectionFromUrl(url, currentDetection || {});
-      } catch (error) {
-        console.error("Failed to apply Discogs correction:", error);
-        showToast(`Discogs correction failed: ${error.message}`, "error");
-      }
-    });
-  }
 
   // Warn about unsaved changes when leaving page with hosted images
   window.addEventListener("beforeunload", (e) => {
@@ -7614,19 +7562,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initialize drop zone
   initDropZone();
 
-  const aiChat = document.getElementById("aiChatBox");
-  if (aiChat) {
-    aiChat.addEventListener("discogs-release-correction", async (event) => {
-      try {
-        const { url, currentDetection } = event.detail || {};
-        if (!url) return;
-        await applyDiscogsCorrectionFromUrl(url, currentDetection || {});
-      } catch (error) {
-        console.error("Failed to apply Discogs correction:", error);
-        showToast(`Discogs correction failed: ${error.message}`, "error");
-      }
-    });
-  }
 
   // Warn about unsaved changes when leaving page with hosted images
   window.addEventListener("beforeunload", (e) => {
@@ -8674,19 +8609,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initialize drop zone
   initDropZone();
 
-  const aiChat = document.getElementById("aiChatBox");
-  if (aiChat) {
-    aiChat.addEventListener("discogs-release-correction", async (event) => {
-      try {
-        const { url, currentDetection } = event.detail || {};
-        if (!url) return;
-        await applyDiscogsCorrectionFromUrl(url, currentDetection || {});
-      } catch (error) {
-        console.error("Failed to apply Discogs correction:", error);
-        showToast(`Discogs correction failed: ${error.message}`, "error");
-      }
-    });
-  }
 
   // Warn about unsaved changes when leaving page with hosted images
   window.addEventListener("beforeunload", (e) => {
@@ -9726,19 +9648,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initialize drop zone
   initDropZone();
 
-  const aiChat = document.getElementById("aiChatBox");
-  if (aiChat) {
-    aiChat.addEventListener("discogs-release-correction", async (event) => {
-      try {
-        const { url, currentDetection } = event.detail || {};
-        if (!url) return;
-        await applyDiscogsCorrectionFromUrl(url, currentDetection || {});
-      } catch (error) {
-        console.error("Failed to apply Discogs correction:", error);
-        showToast(`Discogs correction failed: ${error.message}`, "error");
-      }
-    });
-  }
 
   // Warn about unsaved changes when leaving page with hosted images
   window.addEventListener("beforeunload", (e) => {
