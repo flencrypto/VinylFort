@@ -363,9 +363,6 @@ class DiscogsService {
     (release.artists || []).forEach((artist) => pushSignal(artist?.name));
     (release.labels || []).forEach((label) => pushSignal(label?.name));
     (release.images || []).forEach((image) => {
-      pushSignal(image?.uri);
-      pushSignal(image?.uri150);
-      pushSignal(image?.resource_url);
       pushSignal(image?.type);
     });
 
@@ -384,14 +381,14 @@ class DiscogsService {
     let score = 0;
     uploadedPhotoHints.forEach((hint) => {
       const normalizedHint = this.normalizeText(hint);
-      if (!normalizedHint || normalizedHint.length < 4) return;
+      if (!normalizedHint || normalizedHint.length < 3) return;
       const matchedSignal = releaseSignals.find(
         (signal) =>
           signal.includes(normalizedHint) || normalizedHint.includes(signal),
       );
       if (matchedSignal) {
         score += 5;
-        evidence.push(`Photo hint matched release media (${hint})`);
+        evidence.push(`Photo hint matched release metadata (${hint})`);
       }
     });
 
