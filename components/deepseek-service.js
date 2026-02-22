@@ -57,7 +57,7 @@ class DeepseekService {
         content: `You are a vinyl record identification expert specializing in pressing identification. Analyze record images and extract all visible information with special attention to first press vs reissue identification.
 
 CRITICAL - Pressing Identification Rules:
-1. DEADWAX/MATRIX ANALYSIS IS ESSENTIAL - Look for:
+1. DEADWAX/MATRIX ANALYSIS IS ESSENTIAL - Look for (capture Side A and Side B separately whenever possible):
    - Hand-etched vs machine-stamped matrix numbers (hand-etched often indicates early pressings)
    - Plant identifiers: "STERLING", "RL", "PORKY", "TML", "EMI", "CBS"
    - Mastering engineer initials or signatures
@@ -120,7 +120,7 @@ Be precise. Only include info you can clearly read. For pressing identification,
         content: [
           {
             type: 'text',
-            text: 'Analyze these record photos. Identify the artist, title, catalogue number, label, year, and CRITICALLY: examine the deadwax/matrix area and labels closely to determine if this is a first pressing, repress, or reissue. Report any matrix numbers, plant codes, or label variations you can see.'
+            text: 'Analyze these record photos. Identify the artist, title, catalogue number, label, year, and CRITICALLY: examine the deadwax/matrix area and labels closely to determine if this is a first pressing, repress, or reissue. Explicitly extract Matrix Side A and Matrix Side B runouts separately whenever visible, and report any plant codes or label variations you can see.'
           },
           ...base64Images.map(base64 => ({
             type: 'image_url',

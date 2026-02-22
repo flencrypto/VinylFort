@@ -611,7 +611,14 @@ populateFieldsFromOCR(result);
         // Try to fetch additional data from Discogs with pressing-aware matching
         if (result.artist && result.title && window.discogsService) {
             try {
-                const match = await window.discogsService.matchReleaseFromOcr(result);
+                const quickMatrixA = document.getElementById('matrixSideAInput')?.value?.trim();
+                const quickMatrixB = document.getElementById('matrixSideBInput')?.value?.trim();
+                const mergedOcrData = {
+                    ...result,
+                    matrixRunoutA: result.matrixRunoutA || quickMatrixA || null,
+                    matrixRunoutB: result.matrixRunoutB || quickMatrixB || null
+                };
+                const match = await window.discogsService.matchReleaseFromOcr(mergedOcrData);
                 if (match?.release) {
                     populateFieldsFromDiscogs(match.release);
                     updateDiscogsMatchPanel(match);
@@ -697,7 +704,9 @@ function populateFieldsFromOCR(data) {
         'artistInput': data.artist,
         'titleInput': data.title,
         'catInput': data.catalogueNumber,
-        'yearInput': data.year
+        'yearInput': data.year,
+        'matrixSideAInput': data.matrixRunoutA,
+        'matrixSideBInput': data.matrixRunoutB
     };
 
     let populatedCount = 0;
@@ -754,7 +763,7 @@ function populateFieldsFromOCR(data) {
 }
 // Track user modifications to fields
 document.addEventListener('DOMContentLoaded', () => {
-    ['artistInput', 'titleInput', 'catInput', 'yearInput'].forEach(id => {
+    ['artistInput', 'titleInput', 'catInput', 'yearInput', 'matrixSideAInput', 'matrixSideBInput'].forEach(id => {
         const field = document.getElementById(id);
         if (field) {
             field.addEventListener('input', () => {
@@ -1665,7 +1674,7 @@ async function generateListingWithAI() {
         },
         {
             role: 'user',
-            content: `Generate an eBay listing for: ${artist} - ${title}${catNo ? ` (Catalog: ${catNo})` : ''}${year ? ` (${year})` : ''}. Include optimized title options, professional HTML description, condition guidance, price estimate in GBP, and relevant tags.`
+            content: `Generate an eBay listing for: ${artist} - ${title}${catNo ? ` (Catalog: ${catNo})` : ''}${year ? ` (${year})` : ''}${document.getElementById('matrixSideAInput')?.value?.trim() ? ` (Matrix A: ${document.getElementById('matrixSideAInput').value.trim()})` : ''}${document.getElementById('matrixSideBInput')?.value?.trim() ? ` (Matrix B: ${document.getElementById('matrixSideBInput').value.trim()})` : ''}. Include optimized title options, professional HTML description, condition guidance, price estimate in GBP, and relevant tags.`
         }
     ];
     const provider = localStorage.getItem('ai_provider') || 'openai';
@@ -2661,7 +2670,7 @@ async function generateListingWithAI() {
         },
         {
             role: 'user',
-            content: `Generate an eBay listing for: ${artist} - ${title}${catNo ? ` (Catalog: ${catNo})` : ''}${year ? ` (${year})` : ''}. Include optimized title options, professional HTML description, condition guidance, price estimate in GBP, and relevant tags.`
+            content: `Generate an eBay listing for: ${artist} - ${title}${catNo ? ` (Catalog: ${catNo})` : ''}${year ? ` (${year})` : ''}${document.getElementById('matrixSideAInput')?.value?.trim() ? ` (Matrix A: ${document.getElementById('matrixSideAInput').value.trim()})` : ''}${document.getElementById('matrixSideBInput')?.value?.trim() ? ` (Matrix B: ${document.getElementById('matrixSideBInput').value.trim()})` : ''}. Include optimized title options, professional HTML description, condition guidance, price estimate in GBP, and relevant tags.`
         }
     ];
     const provider = localStorage.getItem('ai_provider') || 'openai';
@@ -3473,7 +3482,7 @@ async function generateListingWithAI() {
         },
         {
             role: 'user',
-            content: `Generate an eBay listing for: ${artist} - ${title}${catNo ? ` (Catalog: ${catNo})` : ''}${year ? ` (${year})` : ''}. Include optimized title options, professional HTML description, condition guidance, price estimate in GBP, and relevant tags.`
+            content: `Generate an eBay listing for: ${artist} - ${title}${catNo ? ` (Catalog: ${catNo})` : ''}${year ? ` (${year})` : ''}${document.getElementById('matrixSideAInput')?.value?.trim() ? ` (Matrix A: ${document.getElementById('matrixSideAInput').value.trim()})` : ''}${document.getElementById('matrixSideBInput')?.value?.trim() ? ` (Matrix B: ${document.getElementById('matrixSideBInput').value.trim()})` : ''}. Include optimized title options, professional HTML description, condition guidance, price estimate in GBP, and relevant tags.`
         }
     ];
     const provider = localStorage.getItem('ai_provider') || 'openai';
@@ -4369,7 +4378,7 @@ async function generateListingWithAI() {
         },
         {
             role: 'user',
-            content: `Generate an eBay listing for: ${artist} - ${title}${catNo ? ` (Catalog: ${catNo})` : ''}${year ? ` (${year})` : ''}. Include optimized title options, professional HTML description, condition guidance, price estimate in GBP, and relevant tags.`
+            content: `Generate an eBay listing for: ${artist} - ${title}${catNo ? ` (Catalog: ${catNo})` : ''}${year ? ` (${year})` : ''}${document.getElementById('matrixSideAInput')?.value?.trim() ? ` (Matrix A: ${document.getElementById('matrixSideAInput').value.trim()})` : ''}${document.getElementById('matrixSideBInput')?.value?.trim() ? ` (Matrix B: ${document.getElementById('matrixSideBInput').value.trim()})` : ''}. Include optimized title options, professional HTML description, condition guidance, price estimate in GBP, and relevant tags.`
         }
     ];
     const provider = localStorage.getItem('ai_provider') || 'openai';
@@ -5244,7 +5253,7 @@ async function generateListingWithAI() {
         },
         {
             role: 'user',
-            content: `Generate an eBay listing for: ${artist} - ${title}${catNo ? ` (Catalog: ${catNo})` : ''}${year ? ` (${year})` : ''}. Include optimized title options, professional HTML description, condition guidance, price estimate in GBP, and relevant tags.`
+            content: `Generate an eBay listing for: ${artist} - ${title}${catNo ? ` (Catalog: ${catNo})` : ''}${year ? ` (${year})` : ''}${document.getElementById('matrixSideAInput')?.value?.trim() ? ` (Matrix A: ${document.getElementById('matrixSideAInput').value.trim()})` : ''}${document.getElementById('matrixSideBInput')?.value?.trim() ? ` (Matrix B: ${document.getElementById('matrixSideBInput').value.trim()})` : ''}. Include optimized title options, professional HTML description, condition guidance, price estimate in GBP, and relevant tags.`
         }
     ];
     const provider = localStorage.getItem('ai_provider') || 'openai';
@@ -6240,7 +6249,7 @@ async function generateListingWithAI() {
         },
         {
             role: 'user',
-            content: `Generate an eBay listing for: ${artist} - ${title}${catNo ? ` (Catalog: ${catNo})` : ''}${year ? ` (${year})` : ''}. Include optimized title options, professional HTML description, condition guidance, price estimate in GBP, and relevant tags.`
+            content: `Generate an eBay listing for: ${artist} - ${title}${catNo ? ` (Catalog: ${catNo})` : ''}${year ? ` (${year})` : ''}${document.getElementById('matrixSideAInput')?.value?.trim() ? ` (Matrix A: ${document.getElementById('matrixSideAInput').value.trim()})` : ''}${document.getElementById('matrixSideBInput')?.value?.trim() ? ` (Matrix B: ${document.getElementById('matrixSideBInput').value.trim()})` : ''}. Include optimized title options, professional HTML description, condition guidance, price estimate in GBP, and relevant tags.`
         }
     ];
     const provider = localStorage.getItem('ai_provider') || 'openai';
@@ -7144,7 +7153,7 @@ async function generateListingWithAI() {
         },
         {
             role: 'user',
-            content: `Generate an eBay listing for: ${artist} - ${title}${catNo ? ` (Catalog: ${catNo})` : ''}${year ? ` (${year})` : ''}. Include optimized title options, professional HTML description, condition guidance, price estimate in GBP, and relevant tags.`
+            content: `Generate an eBay listing for: ${artist} - ${title}${catNo ? ` (Catalog: ${catNo})` : ''}${year ? ` (${year})` : ''}${document.getElementById('matrixSideAInput')?.value?.trim() ? ` (Matrix A: ${document.getElementById('matrixSideAInput').value.trim()})` : ''}${document.getElementById('matrixSideBInput')?.value?.trim() ? ` (Matrix B: ${document.getElementById('matrixSideBInput').value.trim()})` : ''}. Include optimized title options, professional HTML description, condition guidance, price estimate in GBP, and relevant tags.`
         }
     ];
     const provider = localStorage.getItem('ai_provider') || 'openai';
@@ -8040,7 +8049,7 @@ async function generateListingWithAI() {
         },
         {
             role: 'user',
-            content: `Generate an eBay listing for: ${artist} - ${title}${catNo ? ` (Catalog: ${catNo})` : ''}${year ? ` (${year})` : ''}. Include optimized title options, professional HTML description, condition guidance, price estimate in GBP, and relevant tags.`
+            content: `Generate an eBay listing for: ${artist} - ${title}${catNo ? ` (Catalog: ${catNo})` : ''}${year ? ` (${year})` : ''}${document.getElementById('matrixSideAInput')?.value?.trim() ? ` (Matrix A: ${document.getElementById('matrixSideAInput').value.trim()})` : ''}${document.getElementById('matrixSideBInput')?.value?.trim() ? ` (Matrix B: ${document.getElementById('matrixSideBInput').value.trim()})` : ''}. Include optimized title options, professional HTML description, condition guidance, price estimate in GBP, and relevant tags.`
         }
     ];
     const provider = localStorage.getItem('ai_provider') || 'openai';
