@@ -143,6 +143,7 @@ function updateAnalysisProgress(percent, stageText) {
 let uploadedPhotos = [];
 let hostedPhotoUrls = [];
 let photoObjectUrls = []; // Track object URLs for cleanup
+const detectedPhotoTypes = new Set(); // Track inferred shot types for quick preview and checklist rendering
 const dropZone = document.getElementById('dropZone');
 const photoInput = document.getElementById('photoInput');
 const photoGrid = document.getElementById('photoGrid');
