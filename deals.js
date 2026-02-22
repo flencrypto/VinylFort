@@ -520,7 +520,7 @@ function showDealDetail(index) {
             </div>
             
             ${deal.discogsUrl ? `
-                <a href="${deal.discogsUrl}" target="_blank" class="flex items-center gap-2 text-sm text-primary hover:underline">
+                <a href="${deal.discogsUrl}" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 text-sm text-primary hover:underline">
                     View on Discogs
                     <i data-feather="external-link" class="w-4 h-4"></i>
                 </a>

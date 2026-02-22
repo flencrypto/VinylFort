@@ -852,7 +852,6 @@ function renderCollection() {
     
     feather.replace();
 }
-=======
 function getFilteredCollection() {
     const search = document.getElementById('collectionSearch').value.toLowerCase();
     const status = document.getElementById('statusFilter').value;
