@@ -1276,6 +1276,59 @@ ${
                             </p>
                         </div>
                     </div>
+
+                    <!-- Cost Breakdown -->
+                    <div class="bg-surface/60 border border-gray-700 rounded-lg p-3">
+                        <h4 class="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">Total Cost Breakdown</h4>
+                        <div class="space-y-1 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Purchase Price</span>
+                                <span>£${(parseFloat(record.purchasePrice) || 0).toFixed(2)}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-500">P&amp;P / Postage Cost</span>
+                                <input type="number" step="0.01" min="0" placeholder="0.00"
+                                    value="${(parseFloat(record.ppCost) || 0) > 0 ? parseFloat(record.ppCost).toFixed(2) : ""}"
+                                    class="w-20 px-2 py-0.5 bg-surface border border-gray-700 rounded text-right text-sm"
+                                    oninput="updateRecordCost(${index},'ppCost',this.value)">
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-500">Misc (cleaning/extras)</span>
+                                <input type="number" step="0.01" min="0" placeholder="0.00"
+                                    value="${(parseFloat(record.miscCost) || 0) > 0 ? parseFloat(record.miscCost).toFixed(2) : ""}"
+                                    class="w-20 px-2 py-0.5 bg-surface border border-gray-700 rounded text-right text-sm"
+                                    oninput="updateRecordCost(${index},'miscCost',this.value)">
+                            </div>
+                            <div class="flex justify-between font-semibold border-t border-gray-700 pt-1 mt-1">
+                                <span>Total Cost</span>
+                                <span id="totalCostDisplay_${index}">£${((parseFloat(record.purchasePrice) || 0) + (parseFloat(record.ppCost) || 0) + (parseFloat(record.miscCost) || 0)).toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- External Valuation Links -->
+                    <div class="bg-surface/60 border border-gray-700 rounded-lg p-3">
+                        <h4 class="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">Check Valuations</h4>
+                        <div class="flex flex-wrap gap-2 text-xs">
+                            <a href="https://www.valueyourmusic.com/search?q=${encodeURIComponent((record.artist || "") + " " + (record.title || ""))}" target="_blank" rel="noopener noreferrer"
+                                class="px-3 py-1.5 bg-purple-500/10 text-purple-400 border border-purple-500/30 rounded-full hover:bg-purple-500/20 transition-colors">
+                                ValueYourMusic
+                            </a>
+                            <a href="https://www.popsike.com/php/quicksearch.php?searchtext=${encodeURIComponent((record.artist || "") + " " + (record.title || ""))}" target="_blank" rel="noopener noreferrer"
+                                class="px-3 py-1.5 bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded-full hover:bg-blue-500/20 transition-colors">
+                                Popsike
+                            </a>
+                            <a href="https://www.discogs.com/search/?q=${encodeURIComponent((record.artist || "") + " " + (record.title || ""))}&type=release" target="_blank" rel="noopener noreferrer"
+                                class="px-3 py-1.5 bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 rounded-full hover:bg-yellow-500/20 transition-colors">
+                                Discogs
+                            </a>
+                            <a href="https://www.ebay.co.uk/sch/i.html?_nkw=${encodeURIComponent((record.artist || "") + " " + (record.title || "") + " vinyl")}&LH_Sold=1&LH_Complete=1" target="_blank" rel="noopener noreferrer"
+                                class="px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/30 rounded-full hover:bg-red-500/20 transition-colors">
+                                eBay Sold
+                            </a>
+                        </div>
+                    </div>
+
 <div class="space-y-2 text-sm">
                         <div class="flex justify-between py-2 border-b border-gray-800">
                             <span class="text-gray-500">Owned For</span>
@@ -1356,6 +1409,19 @@ ${
                     `
                         : ""
                     }
+
+                    ${
+                      record.ebayListingHtml
+                        ? `
+                        <details class="bg-surface/60 border border-gray-700 rounded-lg overflow-hidden">
+                            <summary class="px-4 py-2 cursor-pointer text-sm text-gray-400 hover:text-white select-none">eBay Listing HTML</summary>
+                            <div class="p-4 border-t border-gray-700 max-h-64 overflow-y-auto">
+                                <iframe srcdoc="${record.ebayListingHtml.replace(/"/g, "&quot;")}" sandbox="" class="w-full" style="min-height:200px;border:none;background:white;border-radius:4px"></iframe>
+                            </div>
+                        </details>
+                    `
+                        : ""
+                    }
                 </div>
             </div>
             
@@ -1384,7 +1450,7 @@ ${
                     : record.status === "listed"
                       ? `
                     <button onclick="markAsSold(${index})" class="flex-1 px-4 py-2 bg-green-600 rounded-lg font-medium hover:bg-green-500 transition-all">
-                        Mark as Sold
+                        🎉 Mark as Sold
                     </button>
                 `
                       : ""
@@ -1415,25 +1481,88 @@ function markAsListed(index) {
 }
 
 function markAsSold(index) {
-  const soldPrice = prompt(
-    "Enter final sold price (£):",
-    collection[index].suggestedListingPrice,
-  );
-  if (soldPrice) {
+  // Replace the bare prompt() with a proper modal
+  const existing = document.getElementById("soldModal");
+  if (existing) existing.remove();
+
+  const record = collection[index];
+  const suggested = record.suggestedListingPrice || record.estimatedValue || "";
+
+  const modal = document.createElement("div");
+  modal.id = "soldModal";
+  modal.style.cssText =
+    "position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px";
+  modal.innerHTML = `
+    <div style="background:#1e293b;border:1px solid #334155;border-radius:16px;max-width:480px;width:100%;padding:24px">
+      <h3 style="margin:0 0 16px;font-size:1.1em;color:#e2e8f0">🎉 Record Sold — Enter Details</h3>
+      <div style="display:grid;gap:12px">
+        <label style="font-size:0.8em;color:#94a3b8">
+          Sale Price (£) <span style="color:#ef4444">*</span>
+          <input id="soldPriceInput" type="number" step="0.01" min="0" value="${suggested}" style="display:block;width:100%;margin-top:4px;padding:8px;background:#0f172a;border:1px solid #475569;border-radius:8px;color:#e2e8f0;font-size:1em">
+        </label>
+        <label style="font-size:0.8em;color:#94a3b8">
+          P&amp;P Cost (£)
+          <input id="soldPPInput" type="number" step="0.01" min="0" placeholder="0.00" style="display:block;width:100%;margin-top:4px;padding:8px;background:#0f172a;border:1px solid #475569;border-radius:8px;color:#e2e8f0;font-size:1em">
+        </label>
+        <label style="font-size:0.8em;color:#94a3b8">
+          eBay Final Value Fee (£)
+          <input id="soldEbayFeeInput" type="number" step="0.01" min="0" placeholder="0.00" style="display:block;width:100%;margin-top:4px;padding:8px;background:#0f172a;border:1px solid #475569;border-radius:8px;color:#e2e8f0;font-size:1em">
+        </label>
+        <label style="font-size:0.8em;color:#94a3b8">
+          eBay Promoted Ad Charge (£)
+          <input id="soldAdChargeInput" type="number" step="0.01" min="0" placeholder="0.00" style="display:block;width:100%;margin-top:4px;padding:8px;background:#0f172a;border:1px solid #475569;border-radius:8px;color:#e2e8f0;font-size:1em">
+        </label>
+      </div>
+      <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px">
+        <button id="soldCancel" style="padding:8px 20px;background:transparent;border:1px solid #475569;border-radius:8px;color:#94a3b8;cursor:pointer">Cancel</button>
+        <button id="soldConfirm" style="padding:8px 20px;background:#22c55e;border:none;border-radius:8px;color:white;cursor:pointer;font-weight:600">Confirm Sale</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+
+  document.getElementById("soldCancel").addEventListener("click", () => modal.remove());
+  document.getElementById("soldConfirm").addEventListener("click", () => {
+    const soldPrice = parseFloat(document.getElementById("soldPriceInput").value);
+    if (!soldPrice || isNaN(soldPrice)) {
+      alert("Please enter a valid sale price.");
+      return;
+    }
+    const ppCost = parseFloat(document.getElementById("soldPPInput").value) || 0;
+    const ebayFee = parseFloat(document.getElementById("soldEbayFeeInput").value) || 0;
+    const adCharge = parseFloat(document.getElementById("soldAdChargeInput").value) || 0;
+    const totalFees = ppCost + ebayFee + adCharge;
+
     collection[index].status = "sold";
-    collection[index].soldPrice = parseFloat(soldPrice);
+    collection[index].soldPrice = soldPrice;
     collection[index].soldDate = new Date().toISOString();
-    collection[index].fees = collection[index].soldPrice * 0.16; // Approximate fees
+    collection[index].soldPPCost = ppCost;
+    collection[index].soldEbayFee = ebayFee;
+    collection[index].soldAdCharge = adCharge;
+    collection[index].fees = totalFees;
     collection[index].actualProfit =
-      collection[index].soldPrice -
-      collection[index].purchasePrice -
-      collection[index].fees;
+      soldPrice - (collection[index].totalCost ?? collection[index].purchasePrice ?? 0) - totalFees;
+
+    // Record time-of-sale analytics
+    const soldAt = new Date();
+    collection[index].soldAnalytics = {
+      hourOfDay: soldAt.getHours(),
+      dayOfWeek: soldAt.getDay(),
+      monthOfYear: soldAt.getMonth() + 1,
+      daysListed: collection[index].listedDate
+        ? Math.floor(
+            (soldAt - new Date(collection[index].listedDate)) / 86400000,
+          )
+        : null,
+    };
+
+    modal.remove();
     saveCollection();
     renderCollection();
     updatePortfolioStats();
     closeRecordModal();
-    showToast("Congratulations on the sale!", "success");
-  }
+    showToast("Congratulations on the sale! 🎉", "success");
+  });
 }
 
 function deleteRecord(index) {
@@ -1446,6 +1575,20 @@ function deleteRecord(index) {
     showToast("Record deleted", "success");
   }
 }
+
+// Update a cost field on a record in-place and refresh the total display
+function updateRecordCost(index, field, value) {
+  const numVal = parseFloat(value) || 0;
+  collection[index][field] = numVal;
+  collection[index].totalCost =
+    (parseFloat(collection[index].purchasePrice) || 0) +
+    (parseFloat(collection[index].ppCost) || 0) +
+    (parseFloat(collection[index].miscCost) || 0);
+  saveCollection();
+  const display = document.getElementById(`totalCostDisplay_${index}`);
+  if (display) display.textContent = `£${collection[index].totalCost.toFixed(2)}`;
+}
+
 function generateListingFromCollection(index) {
   const record = collection[index];
   // Store in session for listing generator

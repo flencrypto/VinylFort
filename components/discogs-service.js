@@ -324,6 +324,26 @@ class DiscogsService {
     }
   }
 
+  async searchByMatrix(matrixValue) {
+    if ((!this.token && (!this.key || !this.secret)) || !matrixValue) return [];
+
+    try {
+      const response = await this.fetchWithRetry(
+        `${this.baseUrl}/database/search?q=${encodeURIComponent(matrixValue)}&type=release&per_page=5`,
+        {
+          headers: this.getHeaders(),
+        },
+      );
+
+      await this.handleResponse(response);
+      const data = await response.json();
+      return data.results || [];
+    } catch (e) {
+      console.error("Matrix search failed:", e);
+      return [];
+    }
+  }
+
   extractReleaseIdFromUrl(value) {
     if (!value) return null;
 

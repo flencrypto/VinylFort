@@ -2190,7 +2190,7 @@ const LISTING_PROGRESS_FIELD_IDS = [
   "matrixSideAInput",
   "matrixSideBInput",
   "costInput",
-  "daysOwnedInput",
+  "dateBoughtInput",
   "vinylConditionInput",
   "sleeveConditionInput",
   "goalSelect",
@@ -2387,6 +2387,69 @@ document.addEventListener("DOMContentLoaded", () => {
         showToast(`Discogs correction failed: ${error.message}`, "error");
       }
     });
+
+    aiChat.addEventListener("matrix-search", async (event) => {
+      const { value, side } = event.detail || {};
+      if (!value) return;
+      // Populate the relevant matrix field if a side was specified
+      if (side === "a") {
+        const el = document.getElementById("matrixSideAInput");
+        if (el) el.value = value;
+      } else if (side === "b") {
+        const el = document.getElementById("matrixSideBInput");
+        if (el) el.value = value;
+      }
+      // Also run the Discogs lookup
+      const discogs = window.discogsService;
+      if (discogs) {
+        try {
+          const results = await discogs.searchByMatrix(value);
+          if (results && results.length > 0) {
+            const release = results[0];
+            const artistEl = document.getElementById("artistInput");
+            const titleEl = document.getElementById("titleInput");
+            const yearEl = document.getElementById("yearInput");
+            const catEl = document.getElementById("catInput");
+            const matrixAEl = document.getElementById("matrixSideAInput");
+            const matrixBEl = document.getElementById("matrixSideBInput");
+
+            if (artistEl && !artistEl.value && release.artist) {
+              artistEl.value = Array.isArray(release.artist)
+                ? release.artist.join(", ")
+                : release.artist;
+            }
+            if (titleEl && !titleEl.value && release.title) {
+              titleEl.value = release.title;
+            }
+            if (yearEl && !yearEl.value && release.year) {
+              yearEl.value = release.year;
+            }
+            if (catEl && !catEl.value && release.catno) {
+              catEl.value = release.catno;
+            }
+            // Populate matrix fields from release identifiers if not already set
+            if (release.id) {
+              const details = await discogs.getReleaseDetails(release.id);
+              const identifiers = details?.identifiers || [];
+              const matrixIds = identifiers.filter((id) =>
+                ["Matrix / Runout", "Matrix", "Runout"].includes(id.type),
+              );
+              if (matrixIds.length > 0 && matrixAEl && !matrixAEl.value) {
+                matrixAEl.value = matrixIds[0].value;
+              }
+              if (matrixIds.length > 1 && matrixBEl && !matrixBEl.value) {
+                matrixBEl.value = matrixIds[1].value;
+              }
+            }
+            showToast(`Discogs match: ${release.title} (via matrix)`, "success");
+          } else {
+            showToast("No Discogs match found for that matrix number", "warning");
+          }
+        } catch (err) {
+          console.error("Matrix search failed:", err);
+        }
+      }
+    });
   }
 
   // Warn about unsaved changes when leaving page with hosted images
@@ -2434,7 +2497,7 @@ function populateFieldsFromCollection(record) {
     catInput: record.catalogueNumber || record.matrixNotes,
     yearInput: record.year,
     costInput: record.purchasePrice,
-    daysOwnedInput: record.daysOwned,
+    dateBoughtInput: record.purchaseDate ? record.purchaseDate.slice(0, 10) : null,
   };
 
   Object.entries(fields).forEach(([fieldId, value]) => {
@@ -6551,7 +6614,7 @@ function populateFieldsFromCollection(record) {
     catInput: record.catalogueNumber || record.matrixNotes,
     yearInput: record.year,
     costInput: record.purchasePrice,
-    daysOwnedInput: record.daysOwned,
+    dateBoughtInput: record.purchaseDate ? record.purchaseDate.slice(0, 10) : null,
   };
 
   Object.entries(fields).forEach(([fieldId, value]) => {
@@ -8739,6 +8802,10 @@ async function performAnalysis(data) {
     safeFloor,
     currency,
   };
+
+  // Prompt to add the record to the collection
+  const ebayHtml = document.getElementById("htmlOutput")?.value || "";
+  promptAddToCollection(data, ebayHtml);
 }
 function generateTitles(base, catNo, year, goal) {
   const titles = [];
@@ -9687,6 +9754,172 @@ async function cleanupHostedImages() {
     window.currentListingImages = [];
   }
 }
+// Calculate and show days owned from the date-bought input
+function updateDaysOwnedDisplay() {
+  const dateInput = document.getElementById("dateBoughtInput");
+  const display = document.getElementById("daysOwnedDisplay");
+  if (!dateInput || !display) return;
+  const val = dateInput.value;
+  if (!val) {
+    display.classList.add("hidden");
+    return;
+  }
+  // Use local-midnight for both ends to avoid timezone off-by-one
+  const bought = new Date(val);
+  const todayMidnight = new Date();
+  todayMidnight.setHours(0, 0, 0, 0);
+  const days = Math.floor(
+    (todayMidnight.getTime() - bought.getTime()) / 86400000,
+  );
+  display.textContent = `${days} day${days !== 1 ? "s" : ""} owned`;
+  display.classList.remove("hidden");
+}
+
+// Auto-search Discogs when user finishes entering a matrix number
+function setupMatrixAutoSearch() {
+  const matrixAInput = document.getElementById("matrixSideAInput");
+  const matrixBInput = document.getElementById("matrixSideBInput");
+
+  const handleMatrixSearch = async (inputEl) => {
+    const matrixVal = inputEl.value.trim();
+    if (!matrixVal || matrixVal.length < 3) return;
+
+    const discogs = window.discogsService;
+    if (!discogs) return;
+
+    try {
+      const results = await discogs.searchByMatrix(matrixVal);
+      if (results && results.length > 0) {
+        const release = results[0];
+        const artistEl = document.getElementById("artistInput");
+        const titleEl = document.getElementById("titleInput");
+        const yearEl = document.getElementById("yearInput");
+        const catEl = document.getElementById("catInput");
+
+        if (artistEl && !artistEl.value && release.artist) {
+          artistEl.value = Array.isArray(release.artist)
+            ? release.artist.join(", ")
+            : release.artist;
+        }
+        if (titleEl && !titleEl.value && release.title) {
+          titleEl.value = release.title;
+        }
+        if (yearEl && !yearEl.value && release.year) {
+          yearEl.value = release.year;
+        }
+        if (catEl && !catEl.value && release.catno) {
+          catEl.value = release.catno;
+        }
+        showToast(`Discogs match: ${release.title} (via matrix)`, "success");
+      }
+    } catch (e) {
+      console.warn("Matrix Discogs search failed:", e);
+    }
+  };
+
+  [matrixAInput, matrixBInput].forEach((input) => {
+    if (input) {
+      input.addEventListener("change", () => handleMatrixSearch(input));
+    }
+  });
+}
+
+// Prompt user to add the just-generated listing to their collection
+function promptAddToCollection(data, ebayHtml) {
+  const existing = document.getElementById("addToCollectionModal");
+  if (existing) existing.remove();
+
+  const artist = data.artist || "";
+  const title = data.title || "";
+
+  const modal = document.createElement("div");
+  modal.id = "addToCollectionModal";
+  modal.style.cssText =
+    "position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px";
+  modal.innerHTML = `
+    <div style="background:#1e293b;border:1px solid #334155;border-radius:16px;max-width:480px;width:100%;padding:24px;box-shadow:0 0 40px rgba(124,58,237,0.2)">
+      <h3 style="margin:0 0 8px;font-size:1.1em;color:#e2e8f0">Add to Collection?</h3>
+      <p style="margin:0 0 20px;font-size:0.85em;color:#94a3b8">
+        Would you like to save <strong style="color:#e2e8f0">${escapeForHtml(artist)} \u2013 ${escapeForHtml(title)}</strong> to your vinyl collection with this eBay listing attached?
+      </p>
+      <div style="display:flex;gap:12px;justify-content:flex-end">
+        <button id="atcNo" style="padding:8px 20px;background:transparent;border:1px solid #475569;border-radius:8px;color:#94a3b8;cursor:pointer;font-size:0.9em">Not now</button>
+        <button id="atcYes" style="padding:8px 20px;background:#7c3aed;border:none;border-radius:8px;color:white;cursor:pointer;font-size:0.9em;font-weight:600">Yes, add to collection</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+
+  document.getElementById("atcNo").addEventListener("click", () => modal.remove());
+  document.getElementById("atcYes").addEventListener("click", () => {
+    modal.remove();
+    addListingToCollection(data, ebayHtml);
+  });
+}
+
+function escapeForHtml(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function addListingToCollection(data, ebayHtml) {
+  const dateBoughtVal = document.getElementById("dateBoughtInput")?.value || null;
+  const purchaseDate = dateBoughtVal || new Date().toISOString().split("T")[0];
+  const daysOwned = dateBoughtVal
+    ? (() => {
+        const todayMidnight = new Date();
+        todayMidnight.setHours(0, 0, 0, 0);
+        return Math.floor(
+          (todayMidnight.getTime() - new Date(dateBoughtVal).getTime()) /
+            86400000,
+        );
+      })()
+    : 0;
+
+  const record = {
+    artist: data.artist || "",
+    title: data.title || "",
+    catalogueNumber: data.catNo || "",
+    year: data.year ? parseInt(data.year) : null,
+    format: window.detectedFormat || "LP",
+    genre: window.detectedGenre || "",
+    purchasePrice: parseFloat(data.cost) || 0,
+    purchaseDate,
+    purchaseSource: "other",
+    conditionVinyl:
+      document.getElementById("vinylConditionInput")?.value || "VG",
+    conditionSleeve:
+      document.getElementById("sleeveConditionInput")?.value || "VG",
+    photos: (window.uploadedPhotos || []).map((p) => ({
+      url: p.url || p,
+    })),
+    status: "owned",
+    dateAdded: new Date().toISOString(),
+    daysOwned,
+    ebayListingHtml: ebayHtml || "",
+    notes: "",
+    needsEnrichment: true,
+    enrichmentStatus: "pending",
+  };
+
+  try {
+    const saved = localStorage.getItem("vinyl_collection");
+    const collection = saved ? JSON.parse(saved) : [];
+    collection.push(record);
+    localStorage.setItem("vinyl_collection", JSON.stringify(collection));
+    showToast(
+      `${record.artist} \u2013 ${record.title} added to collection!`,
+      "success",
+    );
+  } catch (e) {
+    console.error("Failed to add to collection:", e);
+    showToast("Failed to add to collection", "error");
+  }
+}
+
 // Initialize
 document.addEventListener("DOMContentLoaded", () => {
   if (window.__vinylVaultInitialized) return;
@@ -9696,6 +9929,14 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initialize drop zone
   initDropZone();
 
+  // Wire up Date Bought → days-owned display
+  const dateBoughtEl = document.getElementById("dateBoughtInput");
+  if (dateBoughtEl) {
+    dateBoughtEl.addEventListener("change", updateDaysOwnedDisplay);
+  }
+
+  // Wire up matrix field auto-search
+  setupMatrixAutoSearch();
 
   // Warn about unsaved changes when leaving page with hosted images
   window.addEventListener("beforeunload", (e) => {
