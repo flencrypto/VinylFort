@@ -8976,13 +8976,13 @@ async function renderHTMLDescription(data, titleObj) {
         if (matrixInfo.length > 0 || barcodeInfo || pressingInfo.length > 0) {
           pressingDetailsHtml = `
                         <div style="background: #f0fdf4; border-left: 4px solid #22c55e; padding: 16px 20px; margin: 24px 0; border-radius: 0 8px 8px 0;">
-                            <h3 style="margin: 0 0 12px 0; color: #166534; font-size: 15px; font-weight: 600;">Pressing & Matrix Information</h3>
+                            <h3 style="margin: 0 0 12px 0; color: #166534; font-size: 15px; font-weight: 600;">Barcode/Other Identifiers & Matrix Matches</h3>
                             <div style="font-family: monospace; font-size: 13px; line-height: 1.6; color: #15803d;">
                                 ${barcodeInfo ? `<p style="margin: 4px 0;"><strong>Barcode:</strong> ${barcodeInfo.value}</p>` : ""}
                                 ${matrixInfo.map((m) => `<p style="margin: 4px 0;"><strong>${m.type}:</strong> ${m.value}${m.description ? ` <em>(${m.description})</em>` : ""}</p>`).join("")}
                                 ${pressingInfo.map((p) => `<p style="margin: 4px 0;"><strong>${p.type}:</strong> ${p.value}</p>`).join("")}
                             </div>
-                            ${discogsData.notes ? `<p style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #bbf7d0; font-size: 12px; color: #166534; font-style: italic;">${discogsData.notes.substring(0, 300)}${discogsData.notes.length > 300 ? "..." : ""}</p>` : ""}
+                            ${discogsData.notes ? `<p style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #bbf7d0; font-size: 12px; color: #166534; font-style: italic;"><strong>Notes:</strong> ${discogsData.notes.substring(0, 300)}${discogsData.notes.length > 300 ? "..." : ""}</p>` : ""}
                         </div>
                     `;
         }
@@ -9101,7 +9101,7 @@ async function renderHTMLDescription(data, titleObj) {
   </div>
   <!-- ABOUT -->
   <h3 style="color: #1e293b; font-size: 18px; font-weight: 600; margin-bottom: 12px;">About This Release</h3>
-  <p style="margin-bottom: 16px; color: #475569;">${detectedGenre ? `${detectedGenre.charAt(0).toUpperCase() + detectedGenre.slice(1)} release` : "Vintage vinyl release"}${detectedPressingInfo ? `. Matrix/Runout: ${detectedPressingInfo}` : ""}. [Add accurate description based on verified pressing details. Mention notable features: gatefold, insert, poster, hype sticker, etc.]</p>
+  <p style="margin-bottom: 16px; color: #475569;">${detectedGenre ? `${detectedGenre.charAt(0).toUpperCase() + detectedGenre.slice(1)} release` : "Vintage vinyl release"}${detectedPressingInfo ? `. Matrix/Runout: ${detectedPressingInfo}` : ""}. [Add accurate description based on verified pressing details from the matched Discogs release page. Confirm Tracklist + Notes + Barcode/Other Identifier and matrix/runout alignment. Mention notable features: gatefold, insert, poster, hype sticker, etc.]</p>
 <!-- TRACKLIST -->
   <h3 style="color: #1e293b; font-size: 18px; font-weight: 600; margin-bottom: 12px;">Tracklist</h3>
   <div style="background: #f8fafc; padding: 16px 20px; border-radius: 8px; margin-bottom: 24px;">
@@ -9566,11 +9566,11 @@ async function generateListingWithAI() {
     {
       role: "system",
       content:
-        "You are a vinyl record eBay listing expert. Generate optimized titles, descriptions, and pricing strategies. Always return JSON format with: titles (array), description (string), condition_notes (string), price_estimate (object with min, max, recommended), and tags (array).",
+        "You are a vinyl record eBay listing expert. Use the selected model once to identify the most likely Discogs release after checking photo evidence, and verify Tracklist, Notes, and Barcode/Other Identifiers (especially matrix/runout matches) before writing listing copy. Then provide a second-pass sold-price review (DeepSeek-style reasoning) focused on realistic sold values rather than asking prices. Always return JSON format with: titles (array), description (string), condition_notes (string), price_estimate (object with min, max, recommended), and tags (array).",
     },
     {
       role: "user",
-      content: `Generate an eBay listing for: ${artist} - ${title}${catNo ? ` (Catalog: ${catNo})` : ""}${year ? ` (${year})` : ""}${document.getElementById("matrixSideAInput")?.value?.trim() ? ` (Matrix A: ${document.getElementById("matrixSideAInput").value.trim()})` : ""}${document.getElementById("matrixSideBInput")?.value?.trim() ? ` (Matrix B: ${document.getElementById("matrixSideBInput").value.trim()})` : ""}. Include optimized title options, professional HTML description, condition guidance, price estimate in GBP, and relevant tags.`,
+      content: `Generate an eBay listing for: ${artist} - ${title}${catNo ? ` (Catalog: ${catNo})` : ""}${year ? ` (${year})` : ""}${document.getElementById("matrixSideAInput")?.value?.trim() ? ` (Matrix A: ${document.getElementById("matrixSideAInput").value.trim()})` : ""}${document.getElementById("matrixSideBInput")?.value?.trim() ? ` (Matrix B: ${document.getElementById("matrixSideBInput").value.trim()})` : ""}. Verify the Discogs release page details against photo evidence, explicitly cover Tracklist and Notes from that release, and reference Barcode/Other Identifier + matrix/runout matches. Include optimized title options, professional HTML description with an About This Release section, condition guidance, sold-price-led estimate in GBP, and relevant tags.`,
     },
   ];
   const provider = localStorage.getItem("ai_provider") || "openai";

@@ -597,7 +597,7 @@ class AIChat extends HTMLElement {
     const discogsUrl = this.extractDiscogsReleaseUrl(message);
     if (discogsUrl && this.isDiscogsCorrectionMessage(message)) {
       this.addMessage(
-        "Got it — I'll verify this Discogs release against the detected info and uploaded photos.",
+        "Got it — I'll verify this Discogs release against the detected info and uploaded photos, including tracklist, notes, and barcode/matrix identifiers.",
         "ai",
         { meta: "Applying Discogs correction" },
       );
