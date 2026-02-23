@@ -1,6 +1,38 @@
 // Futuristic Feature Functions for VinylVault Pro
 
 // AI Mood Analysis
+
+// Mapping of genre keywords to mood profiles
+const MOOD_MAP = [
+  { keywords: ["rock", "punk", "grunge", "indie"], mood: "Energetic", emoji: "⚡", color: "#f97316" },
+  { keywords: ["metal", "heavy", "thrash", "doom"], mood: "Intense", emoji: "🔥", color: "#ef4444" },
+  { keywords: ["jazz", "bebop", "swing", "bossa"], mood: "Sophisticated", emoji: "🎷", color: "#8b5cf6" },
+  { keywords: ["classical", "orchestral", "symphony", "baroque", "opera"], mood: "Contemplative", emoji: "🎻", color: "#6366f1" },
+  { keywords: ["blues"], mood: "Melancholic", emoji: "🌧️", color: "#3b82f6" },
+  { keywords: ["electronic", "techno", "house", "ambient", "synth", "electro"], mood: "Hypnotic", emoji: "🌐", color: "#06b6d4" },
+  { keywords: ["pop", "disco"], mood: "Upbeat", emoji: "✨", color: "#f59e0b" },
+  { keywords: ["soul", "gospel", "r&b", "rnb", "funk"], mood: "Passionate", emoji: "❤️", color: "#ec4899" },
+  { keywords: ["hip hop", "hip-hop", "rap", "trap"], mood: "Confident", emoji: "🎤", color: "#a855f7" },
+  { keywords: ["folk", "acoustic", "country", "bluegrass", "americana"], mood: "Nostalgic", emoji: "🍂", color: "#84cc16" },
+  { keywords: ["reggae", "ska", "dub"], mood: "Laid-back", emoji: "🌴", color: "#10b981" },
+  { keywords: ["latin", "salsa", "samba", "cumbia", "bossa nova"], mood: "Vibrant", emoji: "💃", color: "#fb923c" },
+  { keywords: ["new age", "meditation", "spiritual"], mood: "Serene", emoji: "🌙", color: "#67e8f9" },
+  { keywords: ["world", "afrobeat", "afro"], mood: "Adventurous", emoji: "🌍", color: "#fbbf24" },
+];
+
+function detectMoodForRecord(record) {
+  const haystack = [record.genre, record.style, record.title, record.notes]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  for (const entry of MOOD_MAP) {
+    if (entry.keywords.some((kw) => haystack.includes(kw))) {
+      return entry;
+    }
+  }
+  return { mood: "Eclectic", emoji: "🎵", color: "#9ca3af" };
+}
+
 function openMoodAnalysis() {
   // Use Joyride flare for mood analysis
   if (typeof vscode !== "undefined") {
@@ -20,10 +52,191 @@ function openMoodAnalysis() {
       ],
     });
   } else {
-    alert(
-      "AI Mood Analysis: This feature requires VS Code with Joyride extension for full functionality.",
-    );
+    showMoodAnalysisModal();
   }
+}
+
+function showMoodAnalysisModal() {
+  // Load collection from localStorage
+  let collection = [];
+  try {
+    const saved = localStorage.getItem("vinyl_collection");
+    if (saved) collection = JSON.parse(saved);
+  } catch (_e) {
+    collection = [];
+  }
+
+  const totalRecords = collection.length;
+
+  // Compute mood distribution
+  const moodCounts = {};
+  const moodMeta = {};
+  collection.forEach((r) => {
+    const entry = detectMoodForRecord(r);
+    moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
+    moodMeta[entry.mood] = { emoji: entry.emoji, color: entry.color };
+  });
+
+  const sortedMoods = Object.entries(moodCounts).sort((a, b) => b[1] - a[1]);
+  const dominantMood = sortedMoods.length ? sortedMoods[0] : null;
+
+  // Genre classification breakdown
+  const genreCounts = {};
+  collection.forEach((r) => {
+    const genre = r.genre || r.style || "Unknown";
+    genreCounts[genre] = (genreCounts[genre] || 0) + 1;
+  });
+  const topGenres = Object.entries(genreCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6);
+
+  // Annotate top genres with mood
+  const genreRowsHtml = topGenres.length
+    ? topGenres
+        .map(([genre, count]) => {
+          const pct = totalRecords > 0 ? Math.round((count / totalRecords) * 100) : 0;
+          const moodEntry = detectMoodForRecord({ genre });
+          return `<div style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.85em;margin-bottom:4px">
+              <span style="display:flex;align-items:center;gap:6px">
+                <span>${moodEntry.emoji}</span>
+                <span style="color:#e2e8f0">${escapeHtml(genre)}</span>
+                <span style="font-size:0.75em;color:${moodEntry.color};background:${moodEntry.color}22;padding:1px 6px;border-radius:4px">${escapeHtml(moodEntry.mood)}</span>
+              </span>
+              <span style="color:#9ca3af">${count} (${pct}%)</span>
+            </div>
+            <div style="background:rgba(255,255,255,0.08);border-radius:4px;height:6px">
+              <div style="background:${moodEntry.color};height:6px;border-radius:4px;width:${pct}%"></div>
+            </div>
+          </div>`;
+        })
+        .join("")
+    : '<p style="color:#9ca3af;font-size:0.85em">No collection data yet.</p>';
+
+  // Mood distribution pills
+  const moodDistHtml = sortedMoods.length
+    ? sortedMoods
+        .slice(0, 8)
+        .map(([mood, count]) => {
+          const meta = moodMeta[mood];
+          const pct = totalRecords > 0 ? Math.round((count / totalRecords) * 100) : 0;
+          return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:0.85em">
+            <span style="min-width:22px;text-align:center">${meta.emoji}</span>
+            <span style="flex:1;color:#e2e8f0">${escapeHtml(mood)}</span>
+            <div style="width:80px;background:rgba(255,255,255,0.08);border-radius:4px;height:6px">
+              <div style="background:${meta.color};height:6px;border-radius:4px;width:${pct}%"></div>
+            </div>
+            <span style="width:32px;text-align:right;color:#9ca3af">${count}</span>
+          </div>`;
+        })
+        .join("")
+    : '<p style="color:#9ca3af;font-size:0.85em">No collection data yet.</p>';
+
+  // Top 5 records with mood labels
+  const sampleRecords = collection.slice(0, 5);
+  const recordRowsHtml = sampleRecords.length
+    ? sampleRecords
+        .map((r) => {
+          const entry = detectMoodForRecord(r);
+          return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:0.85em">
+            <span style="font-size:1.3em">${entry.emoji}</span>
+            <div style="flex:1;min-width:0">
+              <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#e2e8f0">${escapeHtml(r.artist || "Unknown")} — ${escapeHtml(r.title || "Unknown")}</div>
+              <div style="color:#9ca3af;font-size:0.8em">${escapeHtml(r.genre || r.style || "Unknown genre")}</div>
+            </div>
+            <span style="white-space:nowrap;color:${entry.color};background:${entry.color}22;padding:2px 8px;border-radius:6px;font-size:0.8em">${escapeHtml(entry.mood)}</span>
+          </div>`;
+        })
+        .join("")
+    : '<p style="color:#9ca3af;font-size:0.85em">No records yet. Add some vinyl to see mood analysis.</p>';
+
+  const dominantHtml = dominantMood
+    ? `<div style="display:flex;align-items:center;gap:12px;background:${moodMeta[dominantMood[0]].color}18;border:1px solid ${moodMeta[dominantMood[0]].color}44;border-radius:12px;padding:14px 18px">
+        <span style="font-size:2.5em">${moodMeta[dominantMood[0]].emoji}</span>
+        <div>
+          <div style="font-size:0.75em;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em">Dominant Vibe</div>
+          <div style="font-size:1.5em;font-weight:700;color:${moodMeta[dominantMood[0]].color}">${escapeHtml(dominantMood[0])}</div>
+          <div style="font-size:0.8em;color:#9ca3af">${dominantMood[1]} of ${totalRecords} record${totalRecords !== 1 ? "s" : ""}</div>
+        </div>
+      </div>`
+    : `<div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:14px 18px;color:#9ca3af;font-size:0.9em">
+        Add records to your collection to see your dominant vibe.
+      </div>`;
+
+  const modalHtml = `
+    <div id="moodAnalysisModal"
+      style="position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px"
+      data-mood-backdrop="true">
+      <div style="background:#1e293b;border:1px solid rgba(139,92,246,0.3);border-radius:16px;max-width:680px;width:100%;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 0 40px rgba(139,92,246,0.2)">
+        <!-- Header -->
+        <div style="padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="ai-thinking" style="width:32px;height:32px;flex-shrink:0"></div>
+            <div>
+              <h2 style="margin:0;font-size:1.2em;color:#a78bfa">🎵 AI Mood Analysis</h2>
+              <p style="margin:2px 0 0;font-size:0.8em;color:#9ca3af">Emotional vibes &amp; genre classification</p>
+            </div>
+          </div>
+          <button id="moodCloseBtn"
+            style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:1.4em;line-height:1;padding:4px 8px"
+            aria-label="Close">✕</button>
+        </div>
+
+        <!-- Scrollable body -->
+        <div style="padding:20px 24px;overflow-y:auto;flex:1">
+
+          <!-- Dominant vibe banner -->
+          <div style="margin-bottom:20px">
+            ${dominantHtml}
+          </div>
+
+          <!-- Genre classification + Mood distribution side by side -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+            <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:16px">
+              <h3 style="margin:0 0 14px;font-size:0.9em;color:#e2e8f0">Genre Classification</h3>
+              ${genreRowsHtml}
+            </div>
+            <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:16px">
+              <h3 style="margin:0 0 14px;font-size:0.9em;color:#e2e8f0">Mood Distribution</h3>
+              ${moodDistHtml}
+            </div>
+          </div>
+
+          <!-- Per-record mood -->
+          <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:16px">
+            <h3 style="margin:0 0 12px;font-size:0.9em;color:#e2e8f0">Record Vibes (first 5)</h3>
+            ${recordRowsHtml}
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="padding:16px 24px;border-top:1px solid rgba(255,255,255,0.08);display:flex;justify-content:flex-end">
+          <button id="moodFooterCloseBtn"
+            style="background:rgba(139,92,246,0.2);border:1px solid rgba(139,92,246,0.4);color:#a78bfa;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:0.9em">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>`;
+
+  // Remove any existing modal first
+  const existing = document.getElementById("moodAnalysisModal");
+  if (existing) existing.remove();
+
+  document.body.insertAdjacentHTML("beforeend", modalHtml);
+
+  // Attach event listeners after DOM insertion (avoids inline onclick)
+  const modal = document.getElementById("moodAnalysisModal");
+  modal.addEventListener("click", (e) => {
+    if (e.target.hasAttribute("data-mood-backdrop")) closeMoodAnalysisModal();
+  });
+  document.getElementById("moodCloseBtn").addEventListener("click", closeMoodAnalysisModal, { once: true });
+  document.getElementById("moodFooterCloseBtn").addEventListener("click", closeMoodAnalysisModal, { once: true });
+}
+
+function closeMoodAnalysisModal() {
+  const modal = document.getElementById("moodAnalysisModal");
+  if (modal) modal.remove();
 }
 
 // VR Preview
