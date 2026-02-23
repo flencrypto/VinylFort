@@ -8976,7 +8976,7 @@ async function renderHTMLDescription(data, titleObj) {
         if (matrixInfo.length > 0 || barcodeInfo || pressingInfo.length > 0) {
           pressingDetailsHtml = `
                         <div style="background: #f0fdf4; border-left: 4px solid #22c55e; padding: 16px 20px; margin: 24px 0; border-radius: 0 8px 8px 0;">
-                            <h3 style="margin: 0 0 12px 0; color: #166534; font-size: 15px; font-weight: 600;">Barcode/Other Identifiers & Matrix Match</h3>
+                            <h3 style="margin: 0 0 12px 0; color: #166534; font-size: 15px; font-weight: 600;">Barcode/Other Identifiers & Matrix Matches</h3>
                             <div style="font-family: monospace; font-size: 13px; line-height: 1.6; color: #15803d;">
                                 ${barcodeInfo ? `<p style="margin: 4px 0;"><strong>Barcode:</strong> ${barcodeInfo.value}</p>` : ""}
                                 ${matrixInfo.map((m) => `<p style="margin: 4px 0;"><strong>${m.type}:</strong> ${m.value}${m.description ? ` <em>(${m.description})</em>` : ""}</p>`).join("")}
