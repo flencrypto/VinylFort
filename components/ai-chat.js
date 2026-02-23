@@ -655,6 +655,53 @@ class AIChat extends HTMLElement {
       }
     }
 
+    // Check for matrix number input
+    const matrixPatterns = [
+      {
+        regex: /(?:the\s+)?matrix(?:\s+(?:number|code|is))?\s*(?:is|:)\s*(.+)/i,
+        side: null,
+      },
+      {
+        regex:
+          /(?:the\s+)?matrix\s+(?:side\s+)?a\s*(?:is|:)\s*(.+)/i,
+        side: "a",
+      },
+      {
+        regex:
+          /(?:the\s+)?matrix\s+(?:side\s+)?b\s*(?:is|:)\s*(.+)/i,
+        side: "b",
+      },
+      {
+        regex:
+          /(?:runout|deadwax)\s+(?:a|side\s*a)\s*(?:is|:)\s*(.+)/i,
+        side: "a",
+      },
+      {
+        regex:
+          /(?:runout|deadwax)\s*(?:b|side\s*b)\s*(?:is|:)\s*(.+)/i,
+        side: "b",
+      },
+    ];
+
+    for (const mp of matrixPatterns) {
+      const match = message.match(mp.regex);
+      if (match) {
+        const matrixValue = match[1].trim();
+        this.addMessage(
+          `Got it! Searching Discogs for matrix number "${matrixValue}" and updating the fields…`,
+          "ai",
+        );
+        this.dispatchEvent(
+          new CustomEvent("matrix-search", {
+            detail: { value: matrixValue, side: mp.side },
+            bubbles: true,
+            composed: true,
+          }),
+        );
+        return;
+      }
+    }
+
     // General question or confirmation
     this.showTyping();
     setTimeout(() => {
