@@ -6668,6 +6668,16 @@ function populateFieldsFromCollection(record) {
       };
     });
     renderPhotoGrid();
+
+    // Auto-trigger AI analysis on collection photos if an API key is available
+    const hasApiKey =
+      localStorage.getItem("openai_api_key") ||
+      localStorage.getItem("deepseek_api_key");
+    if (hasApiKey) {
+      setTimeout(() => analyzeCollectionPhotosWithOCR(record.photos), 500); // Delay allows the page to settle before OCR starts
+    } else {
+      showToast("Add AI API key in Settings for auto-detection", "warning");
+    }
   }
 
   showToast(
@@ -6678,6 +6688,138 @@ function populateFieldsFromCollection(record) {
 
 // Call check on load
 checkCollectionImport();
+
+// Fetch a collection photo URL (or base64 data URL) and return a File object
+async function urlToFile(url, filename) {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return new File([blob], filename, { type: blob.type || "image/jpeg" });
+}
+
+// Analyze photos that came from a collection record (stored as URLs / base64)
+async function analyzeCollectionPhotosWithOCR(photos) {
+  if (!photos || photos.length === 0) return;
+
+  const spinner = document.getElementById("uploadSpinner");
+  const dz = document.getElementById("dropZone");
+
+  try {
+    if (spinner) spinner.classList.remove("hidden");
+    if (dz) dz.classList.add("pointer-events-none");
+
+    startAnalysisProgressSimulation();
+
+    // Convert each photo to a File so the existing OCR service can analyze it
+    const files = await Promise.all(
+      photos.map((photo, idx) => {
+        const url =
+          typeof photo === "string"
+            ? photo
+            : photo.url || photo.displayUrl || photo;
+        return urlToFile(url, `collection-photo-${idx + 1}.jpg`);
+      }),
+    );
+
+    // Merge into uploadedPhotos so subsequent uploads don't re-trigger analysis
+    uploadedPhotos.push(...files);
+
+    const { provider, fallbackReason } = resolveOCRProvider();
+    const service =
+      provider === "deepseek" ? window.deepseekService : window.ocrService;
+
+    if (fallbackReason) {
+      showToast(`${fallbackReason} Falling back to OpenAI for OCR.`, "warning");
+    }
+
+    if (provider === "openai") {
+      const apiKey = localStorage.getItem("openai_api_key");
+      if (!apiKey) throw new Error("OpenAI API key not configured");
+      window.ocrService.updateApiKey(apiKey);
+    } else {
+      const apiKey = localStorage.getItem("deepseek_api_key");
+      if (!apiKey) throw new Error("DeepSeek API key not configured");
+      window.deepseekService.updateApiKey(apiKey);
+      window.deepseekService.updateModel(
+        localStorage.getItem("deepseek_model") || "deepseek-chat",
+      );
+    }
+
+    const result = await service.analyzeRecordImages(files);
+
+    stopAnalysisProgress();
+    populateFieldsFromOCR(result);
+
+    const aiChatForOcr = document.getElementById("aiChatBox");
+    if (aiChatForOcr?.showDetectionResults) {
+      aiChatForOcr.showDetectionResults(result);
+    }
+
+    if (result.artist && result.title && window.discogsService) {
+      try {
+        const quickMatrixA = document
+          .getElementById("matrixSideAInput")
+          ?.value?.trim();
+        const quickMatrixB = document
+          .getElementById("matrixSideBInput")
+          ?.value?.trim();
+        const mergedOcrData = {
+          ...result,
+          matrixRunoutA: result.matrixRunoutA || quickMatrixA || null,
+          matrixRunoutB: result.matrixRunoutB || quickMatrixB || null,
+        };
+        const match =
+          await window.discogsService.matchReleaseFromOcr(mergedOcrData);
+        if (match?.release) {
+          populateFieldsFromDiscogs(match.release);
+          updateDiscogsMatchPanel(match);
+        } else {
+          const discogsData = await window.discogsService.searchRelease(
+            result.artist,
+            result.title,
+            result.catalogueNumber,
+          );
+          if (discogsData) {
+            populateFieldsFromDiscogs(discogsData);
+          }
+        }
+      } catch (e) {
+        console.log("Discogs lookup failed:", e);
+      }
+    }
+
+    const confidenceMsg =
+      result.confidence === "high"
+        ? "Record identified!"
+        : result.confidence === "medium"
+          ? "Record found (verify details)"
+          : "Partial match found";
+    showToast(
+      confidenceMsg,
+      result.confidence === "high" ? "success" : "warning",
+    );
+  } catch (error) {
+    console.error("Collection photo OCR error:", error);
+    if (
+      error.message.includes("API key") ||
+      error.message.includes("not configured")
+    ) {
+      const provider = localStorage.getItem("ai_provider") || "openai";
+      showToast(
+        `Please configure ${provider === "deepseek" ? "DeepSeek" : "OpenAI"} API key in Settings`,
+        "error",
+      );
+    } else {
+      showToast(`Auto-detection failed: ${error.message}`, "error");
+    }
+  } finally {
+    stopAnalysisProgress();
+    setTimeout(() => {
+      if (spinner) spinner.classList.add("hidden");
+      if (dz) dz.classList.remove("pointer-events-none");
+      updateAnalysisProgress("Initializing...", 0);
+    }, 300);
+  }
+}
 
 async function performAnalysis(data) {
   const { artist, title, catNo, year, cost, goal, market } = data;

@@ -969,15 +969,9 @@ function renderCollection() {
                             ${needsUpdate && !hasCsvData ? '<span class="text-xs">Update for profit calc</span>' : profitDisplay}
                         </div>
                         <div class="flex gap-2">
-                            ${
-                              needsUpdate
-                                ? `
-                                <button onclick="updateRecordPrices(${originalIdx})" class="p-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-all" title="Update Prices">
-                                    <i data-feather="refresh-cw" class="w-4 h-4"></i>
-                                </button>
-                            `
-                                : ""
-                            }
+                            <button onclick="updateRecordPrices(${originalIdx})" class="p-2 ${needsUpdate ? "bg-green-500/20 text-green-400 hover:bg-green-500/30" : "bg-gray-700 text-gray-400 hover:bg-gray-600"} rounded-lg transition-all" title="Refresh Record Details">
+                                <i data-feather="refresh-cw" class="w-4 h-4"></i>
+                            </button>
                             ${
                               record.status === "owned"
                                 ? `
@@ -1419,16 +1413,10 @@ ${
             </div>
             
             <div class="flex gap-3 mt-6 pt-4 border-t border-gray-800">
-                ${
-                  needsUpdate
-                    ? `
-                    <button onclick="updateRecordPrices(${index})" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg font-medium hover:shadow-lg hover:shadow-green-500/25 transition-all flex items-center justify-center gap-2">
-                        <i data-feather="refresh-cw" class="w-4 h-4"></i>
-                        Update Prices
-                    </button>
-                `
-                    : ""
-                }
+                <button onclick="updateRecordPrices(${index})" class="flex-1 px-4 py-2 bg-gradient-to-r ${needsUpdate ? "from-green-600 to-emerald-600 hover:shadow-green-500/25" : "from-gray-600 to-gray-700 hover:shadow-gray-500/25"} rounded-lg font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                    <i data-feather="refresh-cw" class="w-4 h-4"></i>
+                    Refresh Record Details
+                </button>
                 ${
                   record.status === "owned"
                     ? `
