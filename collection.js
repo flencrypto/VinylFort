@@ -836,38 +836,26 @@ function generateEbayStrategy(record) {
 // Collection Display
 function renderCollection() {
   const grid = document.getElementById("collectionGrid");
+  const skeleton = document.getElementById("collectionSkeleton");
+  const emptyState = document.getElementById("collectionEmptyState");
 
   if (!grid) {
     console.error("Collection grid element not found");
     return;
   }
 
+  // Hide skeleton once data is ready
+  if (skeleton) skeleton.style.display = "none";
+
   if (collection.length === 0) {
-    // Show empty state
-    grid.innerHTML = `
-            <div class="col-span-full text-center py-16">
-                <div class="w-24 h-24 mx-auto mb-6 rounded-2xl bg-surface-light border border-gray-700 flex items-center justify-center">
-                    <i data-feather="disc" class="w-12 h-12 text-gray-600"></i>
-                </div>
-                <h3 class="text-xl font-medium text-gray-300 mb-2">Your collection is empty</h3>
-                <p class="text-gray-500 max-w-md mx-auto mb-6">
-                    Import your Discogs collection or add records manually to start tracking profits and resale opportunities.
-                </p>
-                <div class="flex justify-center gap-3">
-                    <button onclick="showImportModal()" class="px-6 py-3 bg-primary/20 text-primary rounded-lg hover:bg-primary/30 transition-all flex items-center gap-2">
-                        <i data-feather="upload" class="w-4 h-4"></i>
-                        Import from Discogs
-                    </button>
-                    <button onclick="addRecordManually()" class="px-6 py-3 border border-gray-600 rounded-lg hover:border-primary hover:text-primary transition-all flex items-center gap-2">
-                        <i data-feather="plus" class="w-4 h-4"></i>
-                        Add First Record
-                    </button>
-                </div>
-            </div>
-        `;
-    feather.replace();
+    // Show dedicated empty state
+    if (emptyState) emptyState.classList.remove("hidden");
+    grid.innerHTML = "";
     return;
   }
+
+  // Hide empty state when collection has items
+  if (emptyState) emptyState.classList.add("hidden");
 
   const filtered = getFilteredCollection();
 
