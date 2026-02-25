@@ -269,6 +269,24 @@ function openVRPreview() {
 }
 
 // Blockchain Authenticity
+
+/**
+ * Generate a deterministic certificate token ID from record metadata.
+ * Produces a reproducible hex-like string without any crypto primitives.
+ */
+function generateCertTokenId(record) {
+  const seed = [record.artist, record.title, record.year, record.catno]
+    .filter(Boolean)
+    .join("|");
+  let h = 0x811c9dc5;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = (h * 0x01000193) >>> 0;
+  }
+  const hex = h.toString(16).padStart(8, "0").toUpperCase();
+  return `VX-${hex.slice(0, 4)}-${hex.slice(4)}`;
+}
+
 function openBlockchainAuth() {
   if (typeof vscode !== "undefined") {
     vscode.postMessage({
@@ -296,10 +314,218 @@ function openBlockchainAuth() {
       ],
     });
   } else {
-    alert(
-      "Blockchain Authenticity: Secure your collection with crypto certificates!",
-    );
+    showBlockchainAuthModal();
   }
+}
+
+function showBlockchainAuthModal() {
+  // Load collection from localStorage
+  let collection = [];
+  try {
+    const saved = localStorage.getItem("vinyl_collection");
+    if (saved) collection = JSON.parse(saved);
+  } catch (_e) {
+    collection = [];
+  }
+
+  // Load or initialise minted certificates from localStorage
+  let minted = {};
+  try {
+    const savedMinted = localStorage.getItem("blockchain_certificates");
+    if (savedMinted) minted = JSON.parse(savedMinted);
+  } catch (_e) {
+    minted = {};
+  }
+
+  const totalRecords = collection.length;
+  const certifiedCount = collection.filter(
+    (r) => minted[generateCertTokenId(r)],
+  ).length;
+  const uncertifiedCount = totalRecords - certifiedCount;
+
+  // Build rows for each record
+  const recordRowsHtml = collection.length
+    ? collection
+        .map((r) => {
+          const tokenId = generateCertTokenId(r);
+          const cert = minted[tokenId];
+          const isCertified = Boolean(cert);
+          const mintDate = cert ? cert.mintDate : null;
+          const statusColor = isCertified ? "#10b981" : "#9ca3af";
+          const statusLabel = isCertified ? "Certified" : "Uncertified";
+          const statusIcon = isCertified ? "🔐" : "🔓";
+          return `<div class="blockchain-record-row" data-token-id="${escapeHtml(tokenId)}"
+            style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:0.85em">
+            <span style="font-size:1.2em;flex-shrink:0">${statusIcon}</span>
+            <div style="flex:1;min-width:0">
+              <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#e2e8f0">
+                ${escapeHtml(r.artist || "Unknown")} — ${escapeHtml(r.title || "Unknown")}
+              </div>
+              <div style="color:#9ca3af;font-size:0.8em">
+                Token: <span style="font-family:monospace;color:#7c3aed">${escapeHtml(tokenId)}</span>
+                ${mintDate ? ` · Minted: ${escapeHtml(mintDate)}` : ""}
+              </div>
+            </div>
+            <span style="white-space:nowrap;color:${statusColor};background:${statusColor}22;padding:2px 8px;border-radius:6px;font-size:0.8em;flex-shrink:0">
+              ${statusLabel}
+            </span>
+            ${
+              !isCertified
+                ? `<button class="mint-btn"
+                    data-token-id="${escapeHtml(tokenId)}"
+                    style="flex-shrink:0;background:rgba(124,58,237,0.3);border:1px solid rgba(124,58,237,0.5);color:#a78bfa;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:0.8em">
+                    Mint
+                  </button>`
+                : `<button class="revoke-btn"
+                    data-token-id="${escapeHtml(tokenId)}"
+                    style="flex-shrink:0;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#f87171;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:0.8em">
+                    Revoke
+                  </button>`
+            }
+          </div>`;
+        })
+        .join("")
+    : '<p style="color:#9ca3af;font-size:0.85em">No records in your collection yet.</p>';
+
+  const modalHtml = `
+    <div id="blockchainAuthModal"
+      style="position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px"
+      data-bc-backdrop="true">
+      <div style="background:#1e293b;border:1px solid rgba(124,58,237,0.3);border-radius:16px;max-width:680px;width:100%;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 0 40px rgba(124,58,237,0.2)">
+        <!-- Header -->
+        <div style="padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="font-size:1.8em">⛓️</span>
+            <div>
+              <h2 style="margin:0;font-size:1.2em;color:#a78bfa">Blockchain Authenticity</h2>
+              <p style="margin:2px 0 0;font-size:0.8em;color:#9ca3af">Secure your collection with crypto certificates</p>
+            </div>
+          </div>
+          <button id="bcCloseBtn"
+            style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:1.4em;line-height:1;padding:4px 8px"
+            aria-label="Close">✕</button>
+        </div>
+
+        <!-- Scrollable body -->
+        <div style="padding:20px 24px;overflow-y:auto;flex:1">
+
+          <!-- Summary stats -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+            <div style="background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.3);border-radius:10px;padding:14px;text-align:center">
+              <div style="font-size:1.8em;font-weight:700;color:#7c3aed">${totalRecords}</div>
+              <div style="font-size:0.75em;color:#9ca3af;margin-top:2px">Total Records</div>
+            </div>
+            <div style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);border-radius:10px;padding:14px;text-align:center">
+              <div style="font-size:1.8em;font-weight:700;color:#10b981">${certifiedCount}</div>
+              <div style="font-size:0.75em;color:#9ca3af;margin-top:2px">Certified</div>
+            </div>
+            <div style="background:rgba(156,163,175,0.1);border:1px solid rgba(156,163,175,0.2);border-radius:10px;padding:14px;text-align:center">
+              <div style="font-size:1.8em;font-weight:700;color:#9ca3af">${uncertifiedCount}</div>
+              <div style="font-size:0.75em;color:#9ca3af;margin-top:2px">Uncertified</div>
+            </div>
+          </div>
+
+          <!-- Record list -->
+          <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:16px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <h3 style="margin:0;font-size:0.9em;color:#e2e8f0">Collection Certificates</h3>
+              ${
+                uncertifiedCount > 0
+                  ? `<button id="bcMintAllBtn"
+                      style="background:rgba(124,58,237,0.3);border:1px solid rgba(124,58,237,0.5);color:#a78bfa;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:0.8em">
+                      Mint All (${uncertifiedCount})
+                    </button>`
+                  : ""
+              }
+            </div>
+            <div id="bcRecordList">
+              ${recordRowsHtml}
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="padding:16px 24px;border-top:1px solid rgba(255,255,255,0.08);display:flex;justify-content:flex-end">
+          <button id="bcFooterCloseBtn"
+            style="background:rgba(124,58,237,0.2);border:1px solid rgba(124,58,237,0.4);color:#a78bfa;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:0.9em">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>`;
+
+  // Remove any existing modal first
+  const existing = document.getElementById("blockchainAuthModal");
+  if (existing) existing.remove();
+
+  document.body.insertAdjacentHTML("beforeend", modalHtml);
+
+  const modal = document.getElementById("blockchainAuthModal");
+  if (!modal) return;
+
+  function saveMinted() {
+    try {
+      localStorage.setItem("blockchain_certificates", JSON.stringify(minted));
+    } catch (_e) { /* storage unavailable */ }
+  }
+
+  function mintRecord(tokenId) {
+    minted[tokenId] = { mintDate: new Date().toISOString().slice(0, 10) };
+    saveMinted();
+  }
+
+  function revokeRecord(tokenId) {
+    delete minted[tokenId];
+    saveMinted();
+  }
+
+  // Delegate Mint / Revoke button clicks inside the list
+  const recordList = document.getElementById("bcRecordList");
+  if (recordList) {
+    recordList.addEventListener("click", (e) => {
+      const mintBtn = e.target.closest(".mint-btn");
+      const revokeBtn = e.target.closest(".revoke-btn");
+      if (mintBtn) {
+        mintRecord(mintBtn.dataset.tokenId);
+        closeBlockchainAuthModal();
+        showBlockchainAuthModal();
+      } else if (revokeBtn) {
+        revokeRecord(revokeBtn.dataset.tokenId);
+        closeBlockchainAuthModal();
+        showBlockchainAuthModal();
+      }
+    });
+  }
+
+  // Mint-all button
+  const mintAllBtn = document.getElementById("bcMintAllBtn");
+  if (mintAllBtn) {
+    mintAllBtn.addEventListener("click", () => {
+      const today = new Date().toISOString().slice(0, 10);
+      collection.forEach((r) => {
+        const tid = generateCertTokenId(r);
+        if (!minted[tid]) minted[tid] = { mintDate: today };
+      });
+      saveMinted();
+      closeBlockchainAuthModal();
+      showBlockchainAuthModal();
+    });
+  }
+
+  // Backdrop click
+  modal.addEventListener("click", (e) => {
+    if (e.target.hasAttribute("data-bc-backdrop")) closeBlockchainAuthModal();
+  });
+
+  const bcCloseBtn = document.getElementById("bcCloseBtn");
+  if (bcCloseBtn) bcCloseBtn.addEventListener("click", closeBlockchainAuthModal, { once: true });
+  const bcFooterCloseBtn = document.getElementById("bcFooterCloseBtn");
+  if (bcFooterCloseBtn) bcFooterCloseBtn.addEventListener("click", closeBlockchainAuthModal, { once: true });
+}
+
+function closeBlockchainAuthModal() {
+  const modal = document.getElementById("blockchainAuthModal");
+  if (modal) modal.remove();
 }
 
 // Quantum Analytics
