@@ -1177,7 +1177,7 @@ async function applyDiscogsCorrectionFromUrl(url, currentDetection = {}) {
 }
 
 function renderPhotoGrid() {
-  if (uploadedPhotos.length === 0) {
+  if (uploadedPhotos.length === 0 && hostedPhotoUrls.length === 0) {
     photoGrid.classList.add("hidden");
     // Revoke all object URLs when clearing grid
     photoObjectUrls.forEach((url) => URL.revokeObjectURL(url));
@@ -1190,7 +1190,9 @@ function renderPhotoGrid() {
   photoObjectUrls = [];
 
   photoGrid.classList.remove("hidden");
-  photoGrid.innerHTML = uploadedPhotos
+
+  // Render locally uploaded photos (File objects)
+  const uploadedHtml = uploadedPhotos
     .map((file, idx) => {
       const objectUrl = URL.createObjectURL(file);
       photoObjectUrls.push(objectUrl);
@@ -1204,6 +1206,24 @@ function renderPhotoGrid() {
     `;
     })
     .join("");
+
+  // Render pre-loaded photos from collection (already hosted, no local files)
+  const preloadedHtml =
+    uploadedPhotos.length === 0
+      ? hostedPhotoUrls
+          .map((photo, idx) => {
+            const imgUrl =
+              photo.displayUrl || photo.url || (typeof photo === "string" ? photo : "");
+            return `
+        <div class="photo-thumb">
+            <img src="${imgUrl}" alt="Collection Photo ${idx + 1}">
+        </div>
+    `;
+          })
+          .join("")
+      : "";
+
+  photoGrid.innerHTML = uploadedHtml + preloadedHtml;
   if (typeof feather !== "undefined") feather.replace();
 }
 function removePhoto(idx) {
@@ -1244,7 +1264,7 @@ async function generateListing() {
     return;
   }
 
-  if (uploadedPhotos.length === 0) {
+  if (uploadedPhotos.length === 0 && hostedPhotoUrls.length === 0) {
     showToast("Please upload at least one photo", "error");
     return;
   }
@@ -6632,6 +6652,22 @@ function populateFieldsFromCollection(record) {
   if (record.conditionSleeve) {
     const sleeveCondition = document.getElementById("sleeveConditionInput");
     if (sleeveCondition) sleeveCondition.value = record.conditionSleeve;
+  }
+
+  // Populate photos from collection (guard against double-call on page load)
+  if (record.photos && record.photos.length > 0 && hostedPhotoUrls.length === 0) {
+    hostedPhotoUrls = record.photos.map((photo) => {
+      if (typeof photo === "string") {
+        return { url: photo, displayUrl: photo, thumb: photo };
+      }
+      return {
+        url: photo.url || photo,
+        displayUrl: photo.displayUrl || photo.url || photo,
+        thumb: photo.thumb || photo.url || photo,
+        deleteUrl: photo.deleteUrl,
+      };
+    });
+    renderPhotoGrid();
   }
 
   showToast(

@@ -416,7 +416,7 @@ async function saveVerifiedRecord() {
 
   // Mark as enriched if we have good data
   record.enrichmentStatus =
-    record.marketData?.lastSold?.length > 0 ? "complete" : "partial";
+    Array.isArray(record.marketData?.lastSold) && record.marketData.lastSold.length > 0 ? "complete" : "partial";
   record.needsEnrichment = record.enrichmentStatus !== "complete";
 
   // Add to collection immediately
@@ -467,7 +467,7 @@ async function analyzeRecordForResale(record) {
       ? localStorage.getItem("deepseek_api_key")
       : localStorage.getItem("openai_api_key");
 
-  if (hasAI && (!marketData?.lastSold || marketData.lastSold.length < 3)) {
+  if (hasAI && (!Array.isArray(marketData?.lastSold) || marketData.lastSold.length < 3)) {
     try {
       aiAnalysis = await fetchAIMarketAnalysis(record, marketData);
       if (aiAnalysis) {
@@ -704,12 +704,12 @@ function calculateEstimatedValue(record, marketData) {
   // Use AI-analyzed sold data if available
   let baseValue;
 
-  if (marketData.lastSold?.length > 0) {
+  if (Array.isArray(marketData.lastSold) && marketData.lastSold.length > 0) {
     // Calculate median from actual sold prices, adjusted for condition
     const sortedPrices = marketData.lastSold
       .map(
         (s) =>
-          s.price * (marketData.gradeAdjustment?.[record.conditionVinyl] || 1),
+          parseFloat(s.price) * (marketData.gradeAdjustment?.[record.conditionVinyl] || 1),
       )
       .sort((a, b) => a - b);
     baseValue = sortedPrices[Math.floor(sortedPrices.length / 2)];
@@ -900,7 +900,7 @@ function renderCollection() {
 
       // Check if needs update
       const needsUpdate =
-        record.needsEnrichment || !record.marketData?.lastSold?.length;
+        record.needsEnrichment || !Array.isArray(record.marketData?.lastSold) || !record.marketData.lastSold.length;
       const hasCsvData = record.csvMarketData?.median;
 
       // Determine value display
@@ -1136,10 +1136,10 @@ function viewRecordDetail(index) {
   const profitClass =
     (record.profitPotential || 0) >= 0 ? "text-profit" : "text-loss";
   const needsUpdate =
-    record.needsEnrichment || !record.marketData?.lastSold?.length;
+    record.needsEnrichment || !Array.isArray(record.marketData?.lastSold) || !record.marketData.lastSold.length;
   // Build market data display
   let marketDataHtml = "";
-  if (record.marketData?.lastSold?.length > 0) {
+  if (Array.isArray(record.marketData?.lastSold) && record.marketData.lastSold.length > 0) {
     marketDataHtml = `
             <div class="bg-surface p-3 rounded-lg mb-3">
                 <div class="flex items-center justify-between mb-2">
@@ -1154,7 +1154,7 @@ function viewRecordDetail(index) {
                         (sale) => `
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-400">${sale.condition} • ${sale.date}</span>
-                            <span class="text-gray-200">£${sale.price.toFixed(2)}${sale.notes ? ` (${sale.notes})` : ""}</span>
+                            <span class="text-gray-200">£${parseFloat(sale.price).toFixed(2)}${sale.notes ? ` (${sale.notes})` : ""}</span>
                         </div>
                     `,
                       )
@@ -1165,7 +1165,7 @@ function viewRecordDetail(index) {
                     ? `
                     <div class="mt-2 pt-2 border-t border-gray-700 flex justify-between">
                         <span class="text-xs text-gray-500">Median Sold</span>
-                        <span class="font-medium text-primary">£${record.marketData.medianSold.toFixed(2)}</span>
+                        <span class="font-medium text-primary">£${parseFloat(record.marketData.medianSold).toFixed(2)}</span>
                     </div>
                 `
                     : ""
@@ -1184,6 +1184,11 @@ function viewRecordDetail(index) {
                     <span class="text-gray-400">Median:</span>
                     <span class="text-gray-200">£${record.csvMarketData.median}</span>
                 </div>
+                ${(() => { const ls = parseFloat(record.csvMarketData.lastSold); return !isNaN(ls) ? `
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-400">Last Sold:</span>
+                    <span class="text-gray-200">£${ls.toFixed(2)}</span>
+                </div>` : ""; })()}
             </div>
         `;
   }
@@ -1626,30 +1631,6 @@ document.addEventListener("visibilitychange", () => {
     updatePortfolioStats();
   }
 });
-// Helper function to extract numeric price from various formats
-function extractPrice(priceValue) {
-  if (!priceValue) return null;
-
-  // Convert to string and handle various formats:
-  // £10.42, $15.99, €12.50, 10.42, "10.42 GBP", etc.
-  const priceStr = String(priceValue).trim();
-
-  // Remove currency symbols and common prefixes
-  const cleaned = priceStr
-    .replace(/^£/, "") // Remove leading £
-    .replace(/^\$/, "") // Remove leading $
-    .replace(/^€/, "") // Remove leading €
-    .replace(/\s*GBP$/i, "") // Remove trailing GBP
-    .replace(/\s*USD$/i, "") // Remove trailing USD
-    .replace(/\s*EUR$/i, "") // Remove trailing EUR
-    .trim();
-
-  // Parse as float
-  const parsed = parseFloat(cleaned);
-
-  // Return if valid number, otherwise null
-  return !isNaN(parsed) && isFinite(parsed) ? parsed : null;
-}
 function addRecordManually() {
   // Create empty record template with placeholder values
   const newRecord = {
