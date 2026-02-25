@@ -132,7 +132,7 @@ class VinylNav extends HTMLElement {
           align-items: center;
           gap: 0.75rem;
           padding: 0.875rem 1rem;
-          color: #94a3b8;
+          color: #cbd5e1;
           text-decoration: none;
           font-size: 1rem;
           font-weight: 500;
@@ -226,12 +226,23 @@ class VinylNav extends HTMLElement {
 
     this._toggleMenu = toggleMenu;
 
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
       toggleMenu(!drawer.classList.contains("open"));
     });
 
+    // Remove any previous handler before adding a new one (reconnection safety)
+    if (this._outsideClickHandler) {
+      document.removeEventListener("click", this._outsideClickHandler);
+    }
+
     this._outsideClickHandler = (e) => {
-      if (!this.contains(e.target)) {
+      const path = typeof e.composedPath === "function" ? e.composedPath() : null;
+      const clickInside =
+        (this.shadowRoot && this.shadowRoot.contains(e.target)) ||
+        (path && path.includes(this)) ||
+        this.contains(e.target);
+      if (!clickInside) {
         toggleMenu(false);
       }
     };
