@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+      content="width=device-width, initial-scale=1.0"
     />
     <title>Deal Finder - VinylVault Pro</title>
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico" />
@@ -17,12 +17,18 @@
     <link rel="preload" href="components/vinyl-nav.js" as="script" />
     <link rel="preload" href="components/vinyl-footer.js" as="script" />
     <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <script>
       if (typeof tailwind !== "undefined")
         tailwind.config = {
           darkMode: "class",
           theme: {
             extend: {
+              fontFamily: {
+                sans: ['Inter', 'system-ui', 'sans-serif'],
+              },
               colors: {
                 primary: "#7c3aed",
                 secondary: "#06b6d4",
@@ -39,11 +45,12 @@
     </script>
   </head>
   <body class="bg-surface text-gray-100 min-h-screen">
+    <a href="#main-content" class="skip-link">Skip to content</a>
     <!-- Navigation -->
     <vinyl-nav></vinyl-nav>
 
     <!-- Main Content -->
-    <main class="pt-20 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <main id="main-content" class="pt-20 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       <!-- Page Header -->
       <section class="mb-8">
         <div

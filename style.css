@@ -1,3 +1,91 @@
+/* Design Tokens */
+:root {
+  --vf-surface: #0f172a;
+  --vf-surface-light: #1e293b;
+  --vf-border: #334155;
+  --vf-primary: #7c3aed;
+  --vf-secondary: #06b6d4;
+  --vf-accent: #f59e0b;
+  --vf-success: #22c55e;
+  --vf-danger: #ef4444;
+  --vf-text: #e2e8f0;
+  --vf-text-muted: #94a3b8;
+  --vf-radius-sm: 0.5rem;
+  --vf-radius-md: 0.75rem;
+  --vf-radius-lg: 1rem;
+}
+
+/* Focus ring for accessibility */
+:focus-visible {
+  outline: 2px solid var(--vf-primary);
+  outline-offset: 2px;
+}
+
+/* Page entrance animation */
+body {
+  animation: pageIn 0.3s ease;
+}
+
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 0.5rem;
+}
+
+.skeleton-card {
+  height: 200px;
+  width: 100%;
+}
+
+.skeleton-text {
+  height: 1rem;
+  width: 60%;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-text-short {
+  height: 1rem;
+  width: 40%;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-avatar {
+  height: 48px;
+  width: 48px;
+  border-radius: 50%;
+}
+
+/* Skip to content link */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--vf-primary);
+  color: #fff;
+  padding: 0.5rem 1rem;
+  z-index: 9999;
+  border-radius: 0 0 var(--vf-radius-sm) 0;
+  font-weight: 600;
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
