@@ -23,9 +23,9 @@ class VinylNav extends HTMLElement {
           left: 0;
           right: 0;
           z-index: 50;
-          background: rgba(15, 23, 42, 0.95);
+          background: rgba(14, 12, 11, 0.96);
           backdrop-filter: blur(12px);
-          border-bottom: 1px solid #334155;
+          border-bottom: 1px solid #2e2924;
         }
         .nav-container {
           max-width: 1280px;
@@ -45,16 +45,26 @@ class VinylNav extends HTMLElement {
         .logo-icon {
           width: 40px;
           height: 40px;
-          border-radius: 10px;
-          background: linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%);
+          border-radius: 50%;
+          background: #0e0c0b;
+          border: 2px solid #2e2924;
           display: flex;
           align-items: center;
           justify-content: center;
+          overflow: hidden;
+          flex-shrink: 0;
+        }
+        .logo-icon svg {
+          animation: vinyl-nav-spin 6s linear infinite;
+        }
+        @keyframes vinyl-nav-spin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
         }
         .logo-text {
           font-size: 1.25rem;
           font-weight: 700;
-          background: linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%);
+          background: linear-gradient(135deg, #c8973f 0%, #e8c06a 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
@@ -65,7 +75,7 @@ class VinylNav extends HTMLElement {
           gap: 2rem;
         }
         .nav-link {
-          color: #94a3b8;
+          color: #9a8678;
           text-decoration: none;
           font-size: 0.875rem;
           font-weight: 500;
@@ -75,35 +85,35 @@ class VinylNav extends HTMLElement {
           gap: 0.5rem;
         }
         .nav-link:hover {
-          color: #e2e8f0;
+          color: #f5ede2;
         }
         .nav-link.active {
-          color: #e2e8f0;
-          border-bottom: 2px solid #7c3aed;
+          color: #f5ede2;
+          border-bottom: 2px solid #c8973f;
           padding-bottom: 2px;
         }
         .nav-link.primary {
-          color: #7c3aed;
+          color: #c8973f;
         }
         .nav-link.primary:hover {
-          color: #a78bfa;
+          color: #e8c06a;
         }
         .nav-link.deal {
-          color: #ec4899;
+          color: #a0876a;
         }
         .nav-link.deal:hover {
-          color: #f472b6;
+          color: #c8973f;
         }
         .mobile-menu-btn {
           display: none;
           background: none;
           border: none;
-          color: #94a3b8;
+          color: #9a8678;
           cursor: pointer;
           padding: 0.5rem;
         }
         .mobile-menu-btn:focus-visible {
-          outline: 2px solid #7c3aed;
+          outline: 2px solid #c8973f;
           outline-offset: 2px;
           border-radius: 4px;
         }
@@ -114,9 +124,9 @@ class VinylNav extends HTMLElement {
           top: 64px;
           left: 0;
           right: 0;
-          background: rgba(15, 23, 42, 0.98);
+          background: rgba(14, 12, 11, 0.98);
           backdrop-filter: blur(12px);
-          border-bottom: 1px solid #334155;
+          border-bottom: 1px solid #2e2924;
           z-index: 49;
           padding: 1rem;
           transform: translateY(-100%);
@@ -132,7 +142,7 @@ class VinylNav extends HTMLElement {
           align-items: center;
           gap: 0.75rem;
           padding: 0.875rem 1rem;
-          color: #cbd5e1;
+          color: #c4b09a;
           text-decoration: none;
           font-size: 1rem;
           font-weight: 500;
@@ -140,13 +150,13 @@ class VinylNav extends HTMLElement {
           transition: background 0.15s ease, color 0.15s ease;
         }
         .mobile-drawer .drawer-link:hover {
-          background: rgba(255,255,255,0.05);
-          color: #e2e8f0;
+          background: rgba(200, 151, 63, 0.08);
+          color: #f5ede2;
         }
         .mobile-drawer .drawer-link.active {
-          background: rgba(124, 58, 237, 0.15);
-          color: #e2e8f0;
-          border-left: 3px solid #7c3aed;
+          background: rgba(200, 151, 63, 0.12);
+          color: #f5ede2;
+          border-left: 3px solid #c8973f;
         }
         @media (max-width: 768px) {
           .nav-links {
@@ -164,7 +174,19 @@ class VinylNav extends HTMLElement {
         <div class="nav-container">
           <a href="index.html" class="logo">
             <div class="logo-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: white;"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+                <!-- Vinyl record body -->
+                <circle cx="16" cy="16" r="15" fill="#0e0c0b"/>
+                <!-- Grooves -->
+                <circle cx="16" cy="16" r="13" fill="none" stroke="#2e2924" stroke-width="0.6"/>
+                <circle cx="16" cy="16" r="11" fill="none" stroke="#2e2924" stroke-width="0.6"/>
+                <circle cx="16" cy="16" r="9"  fill="none" stroke="#2e2924" stroke-width="0.6"/>
+                <!-- Label -->
+                <circle cx="16" cy="16" r="7" fill="#c8973f"/>
+                <circle cx="16" cy="16" r="5.5" fill="none" stroke="#a07830" stroke-width="0.5"/>
+                <!-- Center spindle -->
+                <circle cx="16" cy="16" r="2" fill="#0e0c0b"/>
+              </svg>
             </div>
             <span class="logo-text">VinylVault Pro</span>
           </a>

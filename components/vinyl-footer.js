@@ -9,8 +9,8 @@ class VinylFooter extends HTMLElement {
           display: block;
         }
         footer {
-          background: #0f172a;
-          border-top: 1px solid #334155;
+          background: #0e0c0b;
+          border-top: 1px solid #2e2924;
           padding: 3rem 1rem 2rem;
         }
         .footer-container {
@@ -24,7 +24,7 @@ class VinylFooter extends HTMLElement {
           margin-bottom: 2rem;
         }
         .footer-section h4 {
-          color: #e2e8f0;
+          color: #f5ede2;
           font-size: 0.875rem;
           font-weight: 600;
           text-transform: uppercase;
@@ -40,20 +40,20 @@ class VinylFooter extends HTMLElement {
           margin-bottom: 0.5rem;
         }
         .footer-section a {
-          color: #94a3b8;
+          color: #9a8678;
           text-decoration: none;
           font-size: 0.875rem;
           transition: color 0.2s ease;
         }
         .footer-section a:hover {
-          color: #7c3aed;
+          color: #c8973f;
         }
         .footer-bottom {
           display: flex;
           flex-direction: column;
           gap: 1rem;
           padding-top: 2rem;
-          border-top: 1px solid #334155;
+          border-top: 1px solid #2e2924;
           text-align: center;
         }
         @media (min-width: 640px) {
@@ -64,11 +64,11 @@ class VinylFooter extends HTMLElement {
           }
         }
         .copyright {
-          color: #64748b;
+          color: #6b5a4e;
           font-size: 0.875rem;
         }
         .disclaimer {
-          color: #475569;
+          color: #4a3a30;
           font-size: 0.75rem;
           max-width: 600px;
         }
@@ -78,11 +78,11 @@ class VinylFooter extends HTMLElement {
           justify-content: center;
         }
         .social-links a {
-          color: #94a3b8;
+          color: #9a8678;
           transition: color 0.2s ease;
         }
         .social-links a:hover {
-          color: #7c3aed;
+          color: #c8973f;
         }
         .disabled-link {
           opacity: 0.6;
