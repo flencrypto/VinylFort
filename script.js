@@ -6691,7 +6691,46 @@ checkCollectionImport();
 
 // Fetch a collection photo URL (or base64 data URL) and return a File object
 async function urlToFile(url, filename) {
+  if (typeof url !== "string") {
+    throw new Error("Invalid URL type");
+  }
+
+  // Allow data URLs directly
+  const isDataUrl = url.startsWith("data:");
+
+  if (!isDataUrl) {
+    let parsed;
+    try {
+      parsed = new URL(url);
+    } catch (e) {
+      throw new Error("Invalid URL format");
+    }
+
+    // Only allow external HTTPS URLs
+    if (parsed.protocol !== "https:") {
+      throw new Error("Only HTTPS URLs are allowed");
+    }
+
+    const hostname = parsed.hostname.toLowerCase();
+
+    // Block localhost-style hosts
+    const blockedHostnames = new Set(["localhost", "127.0.0.1", "::1"]);
+    if (blockedHostnames.has(hostname)) {
+      throw new Error("Localhost URLs are not allowed");
+    }
+
+    // Block private IP ranges and metadata endpoint (IPv4 literals)
+    const privateOrMetadataIpPattern =
+      /^(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}|169\.254\.169\.254)$/;
+    if (privateOrMetadataIpPattern.test(hostname)) {
+      throw new Error("Private or metadata IP URLs are not allowed");
+    }
+  }
+
   const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image: ${response.status}`);
+  }
   const blob = await response.blob();
   return new File([blob], filename, { type: blob.type || "image/jpeg" });
 }
