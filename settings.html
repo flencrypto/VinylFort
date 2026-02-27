@@ -457,6 +457,120 @@
           </div>
         </div>
 
+        <!-- eBay API Credentials -->
+        <div class="bg-surface-light rounded-2xl p-8 border border-gray-800">
+          <h2 class="text-xl font-semibold text-gray-200 mb-2">eBay API</h2>
+          <p class="text-sm text-gray-500 mb-6">
+            Used by the Deal Finder to search live eBay listings and place Buy-It-Now orders.
+            Obtain credentials at
+            <a
+              href="https://developer.ebay.com/my/keys"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-primary hover:underline"
+              >developer.ebay.com/my/keys</a
+            >.
+          </p>
+
+          <div class="space-y-4">
+            <!-- App credentials (Browse API / search) -->
+            <div>
+              <label
+                for="ebayClientId"
+                class="block text-sm font-medium text-gray-400 mb-1"
+                >Client ID (App ID)</label
+              >
+              <input
+                type="text"
+                id="ebayClientId"
+                placeholder="YourApp-SomeName-PRD-..."
+                class="w-full px-4 py-2 bg-surface border border-gray-700 rounded-lg text-gray-200 focus:border-primary focus:outline-none"
+                aria-label="eBay Client ID"
+              />
+            </div>
+            <div>
+              <label
+                for="ebayClientSecret"
+                class="block text-sm font-medium text-gray-400 mb-1"
+                >Client Secret (Cert ID)</label
+              >
+              <input
+                type="password"
+                id="ebayClientSecret"
+                placeholder="PRD-..."
+                class="w-full px-4 py-2 bg-surface border border-gray-700 rounded-lg text-gray-200 focus:border-primary focus:outline-none"
+                aria-label="eBay Client Secret"
+              />
+              <p class="text-xs text-gray-600 mt-1">
+                Required for searching eBay listings (Browse API, read-only).
+              </p>
+            </div>
+
+            <!-- User Access Token (Buy Order API) -->
+            <div class="pt-2 border-t border-gray-800">
+              <label
+                for="ebayUserToken"
+                class="block text-sm font-medium text-gray-400 mb-1"
+                >User Access Token</label
+              >
+              <input
+                type="password"
+                id="ebayUserToken"
+                placeholder="v^1.1#i^1#r^..."
+                class="w-full px-4 py-2 bg-surface border border-gray-700 rounded-lg text-gray-200 focus:border-primary focus:outline-none"
+                aria-label="eBay User Access Token"
+              />
+              <p class="text-xs text-gray-600 mt-1">
+                Required for placing auto-buy orders. Obtain via authorization-code OAuth flow with scope
+                <code class="text-gray-400">https://api.ebay.com/oauth/api_scope/buy.order</code>.
+              </p>
+            </div>
+
+            <!-- Marketplace -->
+            <div>
+              <label
+                for="ebayMarketplace"
+                class="block text-sm font-medium text-gray-400 mb-1"
+                >Marketplace</label
+              >
+              <select
+                id="ebayMarketplace"
+                class="w-full px-4 py-2 bg-surface border border-gray-700 rounded-lg text-gray-200 focus:border-primary focus:outline-none"
+                aria-label="eBay Marketplace"
+              >
+                <option value="EBAY_GB">eBay UK (EBAY_GB)</option>
+                <option value="EBAY_US">eBay US (EBAY_US)</option>
+                <option value="EBAY_DE">eBay Germany (EBAY_DE)</option>
+                <option value="EBAY_AU">eBay Australia (EBAY_AU)</option>
+              </select>
+            </div>
+
+            <div
+              class="flex items-center justify-between pt-4 border-t border-gray-800"
+            >
+              <div class="flex items-center gap-2 text-sm" id="ebayStatus">
+                <span class="w-2 h-2 rounded-full bg-gray-600"></span>
+                <span class="text-gray-500">Not configured</span>
+              </div>
+              <div class="flex gap-3">
+                <button
+                  onclick="testEbayConnection()"
+                  class="px-4 py-2 border border-gray-600 rounded-lg text-sm text-gray-300 hover:border-blue-500 hover:text-blue-400 transition-all flex items-center gap-2"
+                >
+                  Test Connection
+                </button>
+                <button
+                  onclick="saveEbaySettings()"
+                  class="px-6 py-2 bg-blue-600 rounded-lg font-medium text-white hover:bg-blue-500 transition-all flex items-center gap-2"
+                >
+                  <i data-feather="save" class="w-4 h-4"></i>
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- General Settings -->
         <div class="bg-surface-light rounded-2xl p-8 border border-gray-800">
           <h2 class="text-xl font-semibold text-gray-200 mb-6">
@@ -533,7 +647,7 @@
     <script src="components/vinyl-nav.js"></script>
     <script src="components/vinyl-footer.js"></script>
     <script src="components/discogs-service.js"></script>
-
+    <script src="components/ebay-service.js"></script>
     <!-- Main Script -->
     <script src="script.js"></script>
     <script>
@@ -584,6 +698,21 @@
 
         if (discogsToken || (discogsKey && discogsSecret)) {
           updateDiscogsStatus(true);
+        }
+
+        // eBay credentials
+        const ebayClientId = localStorage.getItem("ebay_client_id") || "";
+        const ebayClientSecret = localStorage.getItem("ebay_client_secret") || "";
+        const ebayUserToken = localStorage.getItem("ebay_user_token") || "";
+        const ebayMarketplace = localStorage.getItem("ebay_marketplace_id") || "EBAY_GB";
+
+        if (ebayClientId) document.getElementById("ebayClientId").value = ebayClientId;
+        if (ebayClientSecret) document.getElementById("ebayClientSecret").value = ebayClientSecret;
+        if (ebayUserToken) document.getElementById("ebayUserToken").value = ebayUserToken;
+        document.getElementById("ebayMarketplace").value = ebayMarketplace;
+
+        if (ebayClientId && ebayClientSecret) {
+          updateEbayStatus(true);
         }
       });
 
@@ -861,6 +990,50 @@
             "Please enter either a Personal Access Token or both Consumer Key and Secret",
             "error",
           );
+        }
+      }
+
+      // ---------------------------------------------------------------------------
+      // eBay settings
+      // ---------------------------------------------------------------------------
+      function updateEbayStatus(ok) {
+        const el = document.getElementById("ebayStatus");
+        if (!el) return;
+        el.innerHTML = ok
+          ? '<span class="w-2 h-2 rounded-full bg-blue-500"></span><span class="text-blue-400">Configured</span>'
+          : '<span class="w-2 h-2 rounded-full bg-gray-600"></span><span class="text-gray-500">Not configured</span>';
+      }
+
+      function saveEbaySettings() {
+        const clientId = document.getElementById("ebayClientId").value.trim();
+        const clientSecret = document.getElementById("ebayClientSecret").value.trim();
+        const userToken = document.getElementById("ebayUserToken").value.trim();
+        const marketplace = document.getElementById("ebayMarketplace").value;
+
+        window.ebayService.updateCredentials({
+          clientId,
+          clientSecret,
+          userAccessToken: userToken,
+          marketplaceId: marketplace,
+        });
+
+        updateEbayStatus(!!(clientId && clientSecret));
+        showToast("eBay settings saved!", "success");
+      }
+
+      async function testEbayConnection() {
+        if (!window.ebayService.hasSearchCredentials) {
+          showToast("Enter eBay Client ID and Client Secret first.", "error");
+          return;
+        }
+        showToast("Testing eBay connection…", "success");
+        try {
+          await window.ebayService.getAppToken();
+          showToast("eBay connection successful!", "success");
+          updateEbayStatus(true);
+        } catch (err) {
+          showToast(`eBay Error: ${err.message}`, "error");
+          updateEbayStatus(false);
         }
       }
 
