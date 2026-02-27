@@ -9,7 +9,7 @@
   --vf-success: #4ade80;
   --vf-danger: #ef4444;
   --vf-text: #f5ede2;
-  --vf-text-muted: #9a8678;
+  --vf-text-muted: #c8b19c;
   --vf-radius-sm: 0.5rem;
   --vf-radius-md: 0.75rem;
   --vf-radius-lg: 1rem;
@@ -156,7 +156,7 @@ body {
 /* Touch-friendly interactions */
 @media (hover: none) and (pointer: coarse) {
   /* Remove hover effects on touch devices */
-  .hover\\:neon-glow:hover {
+  .hover\\:gold-glow:hover {
     box-shadow: none;
   }
 
@@ -598,20 +598,20 @@ textarea {
 /* ─── Record Player Studio Aesthetics ─────────────────────────────────── */
 
 /* Warm Gold Glow Effects */
-.neon-glow {
+.gold-glow {
   box-shadow:
     0 0 16px rgba(200, 151, 63, 0.45),
     0 0 32px rgba(200, 151, 63, 0.25),
     0 0 48px rgba(200, 151, 63, 0.1);
 }
 
-.neon-glow-secondary {
+.bronze-glow {
   box-shadow:
     0 0 16px rgba(138, 110, 82, 0.45),
     0 0 32px rgba(138, 110, 82, 0.25);
 }
 
-.neon-text {
+.gold-text {
   text-shadow:
     0 0 8px rgba(200, 151, 63, 0.7),
     0 0 18px rgba(200, 151, 63, 0.45);
@@ -700,7 +700,7 @@ textarea {
 }
 
 /* Vinyl Groove Background Pattern */
-.cyber-grid {
+.vinyl-groove {
   background-image:
     repeating-radial-gradient(
       circle at 50% 50%,
@@ -756,12 +756,12 @@ textarea {
 }
 
 /* Studio Loader */
-.quantum-loader {
+.studio-loader {
   position: relative;
 }
 
-.quantum-loader::before,
-.quantum-loader::after {
+.studio-loader::before,
+.studio-loader::after {
   content: "";
   position: absolute;
   border: 2px solid transparent;
@@ -770,14 +770,14 @@ textarea {
   animation: quantum-spin 1s linear infinite;
 }
 
-.quantum-loader::before {
+.studio-loader::before {
   width: 20px;
   height: 20px;
   top: -12px;
   left: -12px;
 }
 
-.quantum-loader::after {
+.studio-loader::after {
   width: 30px;
   height: 30px;
   top: -17px;
@@ -791,8 +791,8 @@ textarea {
   100% { transform: rotate(360deg); }
 }
 
-/* Warm AI Thinking Animation */
-.ai-thinking {
+/* Warm Studio Pulse Animation */
+.studio-pulse {
   animation: ai-pulse 2s ease-in-out infinite;
 }
 
@@ -808,11 +808,11 @@ textarea {
 }
 
 /* Vinyl Platter Rotate */
-.vr-hologram {
+.vinyl-rotate {
   perspective: 1000px;
 }
 
-.vr-hologram > * {
+.vinyl-rotate > * {
   transform-style: preserve-3d;
   animation: hologram-rotate 20s linear infinite;
 }
