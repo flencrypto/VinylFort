@@ -1,0 +1,3 @@
+[build]
+  publish = "."
+  command = "corepack enable && pnpm install --frozen-lockfile && pnpm run typecheck"
