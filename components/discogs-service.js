@@ -180,6 +180,22 @@ class DiscogsService {
       throw new Error("Discogs API credentials not configured");
     }
 
+    // Use the /oauth/identity endpoint when a token is available as it
+    // returns the authenticated username and confirms token validity.
+    if (this.token) {
+      const identityResponse = await fetch(`${this.baseUrl}/oauth/identity`, {
+        headers: this.getHeaders(),
+      });
+      await this.handleResponse(identityResponse);
+      const identity = await identityResponse.json();
+      this.updateRateLimitFromHeaders(identityResponse.headers);
+      return {
+        username: identity.username,
+        rateLimit: { ...this.rateLimit },
+      };
+    }
+
+    // Key/secret only: fall back to a lightweight search request.
     const response = await fetch(
       `${this.baseUrl}/database/search?q=test&per_page=1`,
       {
@@ -188,7 +204,24 @@ class DiscogsService {
     );
 
     await this.handleResponse(response);
-    return true;
+    this.updateRateLimitFromHeaders(response.headers);
+    return { username: null, rateLimit: { ...this.rateLimit } };
+  }
+
+  async getPriceSuggestions(releaseId) {
+    if (!this.token && (!this.key || !this.secret)) return null;
+
+    try {
+      const response = await this.fetchWithRetry(
+        `${this.baseUrl}/marketplace/price_suggestions/${releaseId}`,
+        { headers: this.getHeaders() },
+      );
+      await this.handleResponse(response);
+      return await response.json();
+    } catch (error) {
+      console.warn("Discogs price suggestions failed:", error.message);
+      return null;
+    }
   }
 
   async searchRelease(artist, title, catNo) {

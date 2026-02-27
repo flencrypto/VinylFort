@@ -334,18 +334,24 @@ class AIChat extends HTMLElement {
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           <h3>AI Assistant</h3>
           <span class="status-badge" id="statusBadge">Ready</span>
+          <button id="clearChatBtn" title="Clear chat" style="margin-left:8px;background:transparent;border:1px solid #475569;border-radius:6px;padding:3px 8px;color:#64748b;font-size:11px;cursor:pointer;" onmouseover="this.style.color='#e2e8f0'" onmouseout="this.style.color='#64748b'">
+            Clear
+          </button>
         </div>
         
         <div class="messages-area" id="messagesArea">
           <div class="message ai">
-            Hi! I'll analyze your record photos and help identify the details. If I get anything wrong, just correct me—I'll learn from it for next time!
+            👋 <strong>Hello!</strong> I'm your vinyl record AI assistant.<br><br>
+            📸 <strong>Upload photos</strong> of your record and I'll identify the artist, title, label, year, catalogue number, matrix, and more.<br><br>
+            ✏️ If anything looks wrong, use the quick buttons below or type a correction like <em>"the artist is Black Sabbath"</em>.<br><br>
+            🔗 You can also <strong>paste a Discogs URL</strong> to fetch exact release details.
           </div>
         </div>
         
         <div class="input-area">
           <div class="input-row">
-            <input type="text" class="chat-input" id="chatInput" placeholder="Ask a question or correct a field..." />
-            <button class="send-btn" id="sendBtn">
+            <input type="text" class="chat-input" id="chatInput" placeholder="Type a correction or question..." />
+            <button class="send-btn" id="sendBtn" title="Send message">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             </button>
           </div>
@@ -366,6 +372,7 @@ class AIChat extends HTMLElement {
     const input = this.shadowRoot.getElementById("chatInput");
     const sendBtn = this.shadowRoot.getElementById("sendBtn");
     const quickActions = this.shadowRoot.getElementById("quickActions");
+    const clearBtn = this.shadowRoot.getElementById("clearChatBtn");
 
     sendBtn.addEventListener("click", () => this.handleSend());
     input.addEventListener("keypress", (e) => {
@@ -377,6 +384,14 @@ class AIChat extends HTMLElement {
         this.handleQuickAction(e.target.dataset.action);
       }
     });
+
+    if (clearBtn) {
+      clearBtn.addEventListener("click", () => this.clearChat());
+    }
+  }
+
+  clearChat() {
+    this.clear();
   }
 
   handleSend() {
@@ -1093,9 +1108,13 @@ class AIChat extends HTMLElement {
     const messagesArea = this.shadowRoot.getElementById("messagesArea");
     messagesArea.innerHTML = `
       <div class="message ai">
-        Hi! I'll analyze your record photos and help identify the details. If I get anything wrong, just correct me—I'll learn from it for next time!
+        👋 <strong>Hello!</strong> I'm your vinyl record AI assistant.<br><br>
+        📸 <strong>Upload photos</strong> of your record and I'll identify the artist, title, label, year, catalogue number, matrix, and more.<br><br>
+        ✏️ If anything looks wrong, use the quick buttons below or type a correction like <em>"the artist is Black Sabbath"</em>.<br><br>
+        🔗 You can also <strong>paste a Discogs URL</strong> to fetch exact release details.
       </div>
     `;
+    this.setStatus("ready");
   }
 }
 

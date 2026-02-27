@@ -460,6 +460,14 @@
         <!-- eBay API Credentials -->
         <div class="bg-surface-light rounded-2xl p-8 border border-gray-800">
           <h2 class="text-xl font-semibold text-gray-200 mb-2">eBay API</h2>
+          <div class="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex items-start gap-3">
+            <i data-feather="info" class="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0"></i>
+            <p class="text-xs text-yellow-300">
+              eBay API integration is temporarily paused while credentials are being set up.
+              Use the <strong>Open eBay</strong> button on the Deal Finder page to browse manually.
+              Save your credentials below for when the API is re-enabled.
+            </p>
+          </div>
           <p class="text-sm text-gray-500 mb-6">
             Used by the Deal Finder to search live eBay listings and place Buy-It-Now orders.
             Obtain credentials at
@@ -905,13 +913,17 @@
 
         try {
           window.discogsService.updateCredentials(key, secret, token);
-          await window.discogsService.testConnection();
+          const result = await window.discogsService.testConnection();
 
           // Remove testing toast
           const existing = document.querySelector(".toast");
           if (existing) existing.remove();
 
-          showToast("Discogs connection successful!", "success");
+          const userInfo = result.username ? ` (${result.username})` : "";
+          const rateInfo = result.rateLimit
+            ? ` — ${result.rateLimit.remaining}/${result.rateLimit.limit} requests remaining`
+            : "";
+          showToast(`Discogs connected${userInfo}${rateInfo}`, "success");
           updateDiscogsStatus(true);
         } catch (err) {
           // Remove testing toast

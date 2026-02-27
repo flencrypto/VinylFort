@@ -444,7 +444,7 @@ async function analyzeRecordForResale(record) {
   let aiAnalysis = null;
 
   // Step 1: Try Discogs API for release identification and marketplace data
-  if (window.discogsService?.key) {
+  if (window.discogsService?.key || window.discogsService?.token) {
     try {
       const search = await window.discogsService.searchRelease(
         record.artist,
@@ -627,25 +627,40 @@ async function extractMarketData(releaseDetails, record) {
   // Estimate demand score
   const demandScore = communityWant / Math.max(communityHave, 1);
 
-  // Try to fetch marketplace listings for this release
+  // Try to fetch price suggestions for this release (requires token auth)
+  let priceSuggestions = null;
   let lastSold = [];
   try {
-    const marketplaceResponse = await fetch(
-      `https://api.discogs.com/marketplace/listings?release_id=${releaseDetails.id}&per_page=10&key=${window.discogsService.key}&secret=${window.discogsService.secret}`,
-      {
-        headers: {
-          "User-Agent": "VinylVaultPro/1.0",
-        },
-      },
-    );
-
-    if (marketplaceResponse.ok) {
-      const listings = await marketplaceResponse.json();
-      // Note: Discogs doesn't expose sold history directly via API
-      // We'd need to scrape or use third-party services for actual sold data
+    if (releaseDetails.id && window.discogsService?.token) {
+      priceSuggestions = await window.discogsService.getPriceSuggestions(releaseDetails.id);
     }
   } catch (e) {
-    console.log("Marketplace fetch failed:", e);
+    console.log("Price suggestions fetch failed:", e);
+  }
+
+  // Build lastSold array from price suggestions if available
+  if (priceSuggestions) {
+    const conditionMap = {
+      "Mint (M)": "M",
+      "Near Mint (NM or M-)": "NM",
+      "Very Good Plus (VG+)": "VG+",
+      "Very Good (VG)": "VG",
+      "Good Plus (G+)": "G+",
+      "Good (G)": "G",
+      "Fair (F)": "F",
+      "Poor (P)": "P",
+    };
+    for (const [condLabel, suggestion] of Object.entries(priceSuggestions)) {
+      const cond = conditionMap[condLabel] || condLabel;
+      if (suggestion?.price) {
+        lastSold.push({
+          condition: cond,
+          price: parseFloat(suggestion.price.value || suggestion.price).toFixed(2),
+          date: new Date().toISOString().split("T")[0],
+          notes: "Discogs price guide",
+        });
+      }
+    }
   }
 
   return {
@@ -658,7 +673,8 @@ async function extractMarketData(releaseDetails, record) {
     have: communityHave,
     want: communityWant,
     demandScore: demandScore.toFixed(2),
-    lastSold: lastSold, // Will be populated by AI or remain empty
+    lastSold: lastSold, // Populated from price_suggestions or AI
+    priceSuggestions: priceSuggestions || null,
     fetchedAt: new Date().toISOString(),
   };
 }
@@ -1412,7 +1428,11 @@ ${
                 </div>
             </div>
             
-            <div class="flex gap-3 mt-6 pt-4 border-t border-gray-800">
+            <div class="flex gap-3 mt-6 pt-4 border-t border-gray-800 flex-wrap">
+                <button onclick="editRecord(${index})" class="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg font-medium hover:bg-gray-600 transition-all flex items-center gap-2">
+                    <i data-feather="edit-2" class="w-4 h-4"></i>
+                    Edit Details
+                </button>
                 <button onclick="updateRecordPrices(${index})" class="flex-1 px-4 py-2 bg-gradient-to-r ${needsUpdate ? "from-green-600 to-emerald-600 hover:shadow-green-500/25" : "from-gray-600 to-gray-700 hover:shadow-gray-500/25"} rounded-lg font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2">
                     <i data-feather="refresh-cw" class="w-4 h-4"></i>
                     Refresh Record Details
@@ -1450,6 +1470,160 @@ ${
 function closeRecordModal() {
   document.getElementById("recordModal").classList.add("hidden");
   document.getElementById("recordModal").classList.remove("flex");
+}
+
+function editRecord(index) {
+  const record = collection[index];
+  const modal = document.getElementById("recordModal");
+  const content = document.getElementById("recordModalContent");
+
+  const CONDITIONS = ["M", "NM", "VG+", "VG", "G+", "G", "F", "P"];
+  const SOURCES = [
+    { value: "discogs", label: "Discogs" },
+    { value: "ebay", label: "eBay" },
+    { value: "record_store", label: "Record Store" },
+    { value: "charity_shop", label: "Charity Shop" },
+    { value: "car_boot", label: "Car Boot / Flea Market" },
+    { value: "gift", label: "Gift" },
+    { value: "other", label: "Other" },
+  ];
+
+  const conditionOptions = (selected) =>
+    CONDITIONS.map(
+      (c) => `<option value="${c}" ${selected === c ? "selected" : ""}>${c}</option>`
+    ).join("");
+
+  const sourceOptions = SOURCES.map(
+    (s) => `<option value="${s.value}" ${record.purchaseSource === s.value ? "selected" : ""}>${s.label}</option>`
+  ).join("");
+
+  content.innerHTML = `
+    <div class="p-6 border-b border-gray-800 flex items-center justify-between">
+      <div>
+        <p class="text-gray-400 text-sm mb-1">Edit Record</p>
+        <h2 class="text-xl font-bold text-white">${record.artist} — ${record.title}</h2>
+      </div>
+      <button onclick="closeRecordModal()" class="text-gray-400 hover:text-white">
+        <i data-feather="x" class="w-6 h-6"></i>
+      </button>
+    </div>
+    <div class="p-6 overflow-y-auto max-h-[70vh]">
+      <div class="grid md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Artist</label>
+          <input id="edit_artist" type="text" value="${record.artist || ""}"
+            class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Title</label>
+          <input id="edit_title" type="text" value="${record.title || ""}"
+            class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Year</label>
+          <input id="edit_year" type="text" value="${record.year || ""}"
+            class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Label</label>
+          <input id="edit_label" type="text" value="${record.label || ""}"
+            class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Catalogue Number</label>
+          <input id="edit_catalogueNumber" type="text" value="${record.catalogueNumber || ""}"
+            class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Country</label>
+          <input id="edit_country" type="text" value="${record.country || ""}"
+            class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Vinyl Condition</label>
+          <select id="edit_conditionVinyl"
+            class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm">
+            ${conditionOptions(record.conditionVinyl)}
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Sleeve Condition</label>
+          <select id="edit_conditionSleeve"
+            class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm">
+            ${conditionOptions(record.conditionSleeve)}
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Purchase Price (£)</label>
+          <input id="edit_purchasePrice" type="number" step="0.01" min="0" value="${record.purchasePrice || 0}"
+            class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Purchase Date</label>
+          <input id="edit_purchaseDate" type="date" value="${record.purchaseDate ? record.purchaseDate.split("T")[0] : ""}"
+            class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Purchase Source</label>
+          <select id="edit_purchaseSource"
+            class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm">
+            ${sourceOptions}
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Format</label>
+          <input id="edit_format" type="text" value="${record.format || ""}"
+            class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm" />
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-xs text-gray-400 mb-1">Matrix / Runout Notes</label>
+          <input id="edit_matrixNotes" type="text" value="${record.matrixNotes || ""}"
+            class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm" />
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-xs text-gray-400 mb-1">Notes</label>
+          <textarea id="edit_notes" rows="3"
+            class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg focus:border-primary focus:outline-none text-sm resize-none">${record.notes || ""}</textarea>
+        </div>
+      </div>
+      <div class="flex gap-3 mt-6 pt-4 border-t border-gray-800">
+        <button onclick="saveRecordEdit(${index})" class="flex-1 px-4 py-2 bg-gradient-to-r from-primary to-secondary rounded-lg font-medium hover:shadow-lg hover:shadow-primary/25 transition-all flex items-center justify-center gap-2">
+          <i data-feather="save" class="w-4 h-4"></i>
+          Save Changes
+        </button>
+        <button onclick="viewRecordDetail(${index})" class="px-4 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition-all">
+          Cancel
+        </button>
+      </div>
+    </div>
+  `;
+
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+  feather.replace();
+}
+
+function saveRecordEdit(index) {
+  const record = collection[index];
+  const fields = [
+    "artist", "title", "year", "label", "catalogueNumber", "country",
+    "conditionVinyl", "conditionSleeve", "purchaseDate", "purchaseSource",
+    "format", "matrixNotes", "notes",
+  ];
+
+  fields.forEach((field) => {
+    const el = document.getElementById(`edit_${field}`);
+    if (el) record[field] = el.value.trim();
+  });
+
+  const priceEl = document.getElementById("edit_purchasePrice");
+  if (priceEl) record.purchasePrice = parseFloat(priceEl.value) || 0;
+
+  saveCollection();
+  renderCollection();
+  updatePortfolioStats();
+  viewRecordDetail(index);
+  showToast("Record details saved!", "success");
 }
 
 function markAsListed(index) {
