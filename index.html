@@ -325,9 +325,14 @@
                 <p class="text-gray-300 font-medium mb-2">
                   Drop photos here or click to browse
                 </p>
-                <p class="text-sm text-gray-500">
+                <p class="text-sm text-gray-500 mb-3">
                   Front, back, labels, deadwax, inner sleeve, inserts
                 </p>
+                <button type="button" onclick="event.stopPropagation();document.getElementById('photoInput').click()"
+                  class="px-4 py-2 bg-primary/20 border border-primary/40 text-primary rounded-lg text-sm font-medium hover:bg-primary/30 transition-colors">
+                  <i data-feather="folder" class="w-4 h-4 inline-block mr-1"></i>
+                  Browse Files
+                </button>
                 <p
                   class="text-xs text-primary mt-2 opacity-0 group-hover:opacity-100 transition-opacity"
                 >
@@ -338,7 +343,7 @@
                   id="photoInput"
                   multiple
                   accept="image/*"
-                  class="hidden"
+                  style="position:absolute;opacity:0;width:0;height:0;overflow:hidden"
                   aria-label="Upload record photos"
                   aria-describedby="photo-upload-help"
                 />

@@ -595,18 +595,9 @@ async function analyzeBulkDeals() {
  * @returns {Promise<Array|null>} eBay item summaries or null on error
  */
 async function searchEbayDeals(artist, title, maxResults = 5) {
-  if (!window.ebayService?.hasSearchCredentials) {
-    return null;
-  }
-  try {
-    return await window.ebayService.searchRecord(artist, title, {
-      limit: maxResults,
-      sort: "price",
-    });
-  } catch (err) {
-    console.warn("eBay search failed:", err.message);
-    return null;
-  }
+  // eBay API integration is temporarily paused while API credentials are being set up.
+  // Use the "Open eBay" button to browse eBay manually.
+  return null;
 }
 
 function calculateDealMetrics(buyPrice, estimatedValue, condition = "VG") {
@@ -883,52 +874,12 @@ async function confirmAutoBuy(index) {
 
   closeAutoBuyModal();
 
-  // If no eBay service or no buy credentials, fall back to saving to collection
-  if (!window.ebayService?.hasBuyCredentials) {
-    showToast(
-      "eBay User Access Token not configured. Add it in Settings to enable auto-buy.",
-      "error",
-    );
-    addDealToCollection(index);
-    return;
-  }
-
-  showToast(`Finding best eBay listing for ${deal.artist} – ${deal.title}…`, "success");
-
-  try {
-    // 1. Find the cheapest BIN listing for this record
-    const listing = await window.ebayService.getCheapestListing(
-      deal.artist,
-      deal.title,
-    );
-
-    if (!listing) {
-      showToast("No eBay listing found for this record.", "error");
-      return;
-    }
-
-    const listingPrice = EbayService.formatPrice(listing.price);
-    const proceed = confirm(
-      `Found: "${listing.title}"\nPrice: ${listingPrice}\n\nPlace Buy-It-Now order on eBay?`,
-    );
-    if (!proceed) return;
-
-    // 2. Place the order
-    const order = await window.ebayService.placeOrder(listing.itemId, 1);
-
-    showToast(
-      `Order placed! eBay order ID: ${order.purchaseOrderId || "see eBay account"}`,
-      "success",
-    );
-
-    // 3. Record the purchase in the collection
-    addDealToCollection(index);
-
-    console.log("eBay auto-buy order:", order);
-  } catch (err) {
-    console.error("Auto-buy failed:", err);
-    showToast(`Auto-buy failed: ${err.message}`, "error");
-  }
+  // eBay API integration is temporarily paused. Save deal to collection and open eBay manually.
+  showToast(
+    "eBay API is temporarily unavailable. Deal saved to collection — use the Open eBay button to search manually.",
+    "warning",
+  );
+  addDealToCollection(index);
 }
 function addDealToCollection(index) {
   const deal = window.analyzedDeals[index];
