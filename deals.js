@@ -222,16 +222,159 @@ async function parseURLForDeal(url) {
     return `Discogs Item #${discogsSellMatch[1]} - ${url}`;
   }
 
-  // eBay item URL
-  const ebayMatch =
-    url.match(/ebay\.[a-z.]+\/itm\/(\d+)/) ||
-    url.match(/ebay\.[a-z.]+\/itm\/[^\/]+\/(\d+)/);
-  if (ebayMatch) {
-    return `eBay Item #${ebayMatch[1]} - ${url}`;
+  // eBay item URL – return as-is so analyzeBulkDeals can process it
+  if (EbayService.itemIdFromUrl(url)) {
+    return url;
+  }
+
+  // eBay seller store URL – return as-is so analyzeBulkDeals can process it
+  if (/ebay\.[a-z.]+\/str\//.test(url)) {
+    return url;
   }
 
   // Generic marketplace URL - return as-is with warning
   return `${url} (URL access restricted - please paste details manually)`;
+}
+
+/**
+ * Map an eBay condition display name to the shorthand used by the deal calculator.
+ *
+ * @param {string} conditionName  – e.g. "Very Good Plus (VG+)"
+ * @returns {string}              – e.g. "VG+"
+ */
+function mapEbayCondition(conditionName) {
+  const name = (conditionName || "").toLowerCase();
+  if (name.includes("mint") && !name.includes("near")) return "M";
+  if (name.includes("near mint") || name.includes("nm")) return "NM";
+  if (name.includes("very good") && name.includes("+")) return "VG+";
+  if (name.includes("very good")) return "VG";
+  if (name.includes("good") && name.includes("+")) return "G+";
+  if (name.includes("good")) return "G";
+  return "VG"; // Default
+}
+
+/**
+ * Convert a raw eBay listing object (from Browse API) into a deal object
+ * ready for renderDealsResults.  Shared by parseEbayItemUrlToDeals and
+ * parseEbaySellerUrlToDeals.
+ *
+ * @param {object} item       – EbayItemSummary (or full item) from the API
+ * @param {string} fallbackUrl – URL to use when item.itemWebUrl is absent
+ * @param {string} [seller]   – seller username, if coming from a store URL
+ * @returns {object}
+ */
+function ebayItemToDeal(item, fallbackUrl, seller) {
+  const price = parseFloat(item.price?.value || 0);
+  const rawTitle = item.title || "Unknown";
+  const condition = mapEbayCondition(item.condition?.conditionDisplayName || "");
+  const parts = rawTitle.split(/[-–—]/);
+  const artist = parts.length > 1 ? parts[0].trim() : rawTitle;
+  const recordTitle = parts.length > 1 ? parts.slice(1).join(" - ").trim() : "Unknown";
+  const estimatedValue = price * 2; // Rough market-value estimate (2× purchase price)
+  const analysis = calculateDealMetrics(price, estimatedValue, condition);
+  return {
+    artist,
+    title: recordTitle,
+    price,
+    condition,
+    ebayUrl: item.itemWebUrl || fallbackUrl,
+    ebayItemId: item.itemId,
+    ...(seller ? { seller } : {}),
+    ...analysis,
+  };
+}
+
+/**
+ * Convert an eBay item URL into one deal object for analysis.
+ * Uses the eBay Browse API if credentials are configured; falls back to a
+ * placeholder entry (with a link) when they are not.
+ *
+ * @param {string} url
+ * @returns {Promise<object[]>}
+ */
+async function parseEbayItemUrlToDeals(url) {
+  const itemId = EbayService.itemIdFromUrl(url);
+  if (!itemId) return [];
+
+  if (window.ebayService?.hasSearchCredentials) {
+    try {
+      // eBay Browse API item IDs use the format "v1|{legacyItemId}|0"
+      const item = await window.ebayService.getItem(`v1|${itemId}|0`);
+      return [ebayItemToDeal(item, url)];
+    } catch (e) {
+      console.warn("Failed to fetch eBay item details:", e);
+    }
+  }
+
+  // Fallback placeholder when credentials are absent or the API call failed
+  return [
+    {
+      artist: `eBay Item #${itemId}`,
+      title: "Add eBay credentials in Settings to analyze",
+      price: 0,
+      condition: "VG",
+      ebayUrl: url,
+      ebayItemId: itemId,
+      adjustedValue: 0,
+      netProfit: 0,
+      roi: 0,
+      totalFees: 0,
+      isViable: false,
+      isHot: false,
+    },
+  ];
+}
+
+/**
+ * Convert an eBay seller store URL into deal objects for analysis.
+ * Searches the seller's active vinyl listings via the eBay Browse API when
+ * credentials are configured; falls back to a single placeholder entry
+ * (with a link to the store) when they are not.
+ *
+ * @param {string} url
+ * @returns {Promise<object[]>}
+ */
+async function parseEbaySellerUrlToDeals(url) {
+  const sellerMatch = url.match(/ebay\.[a-z.]+\/str\/([^/?#]+)/);
+  if (!sellerMatch) return [];
+  const sellerName = sellerMatch[1];
+
+  if (window.ebayService?.hasSearchCredentials) {
+    try {
+      const listings = await window.ebayService.searchListings(
+        "vinyl record",
+        {
+          limit: 20,
+          filter: `sellers:{${sellerName}}`,
+          sort: "price",
+        },
+      );
+
+      if (listings.length > 0) {
+        return listings.map((item) => ebayItemToDeal(item, url, sellerName));
+      }
+    } catch (e) {
+      console.warn("Failed to fetch eBay seller listings:", e);
+    }
+  }
+
+  // Fallback placeholder when credentials are absent or the API call failed
+  return [
+    {
+      artist: `eBay Store: ${sellerName}`,
+      title: "Add eBay credentials in Settings to analyze",
+      price: 0,
+      condition: "VG",
+      ebayUrl: url,
+      seller: sellerName,
+      adjustedValue: 0,
+      netProfit: 0,
+      roi: 0,
+      totalFees: 0,
+      isViable: false,
+      isHot: false,
+    },
+  ];
 }
 
 function calculateDeal() {
@@ -374,7 +517,23 @@ async function analyzeBulkDeals() {
     // Parse different formats:
     // "Artist - Title - £15"
     // "Artist - Title VG+ £20"
-    // URLs
+    // eBay item or seller store URLs
+
+    const trimmedLine = line.trim();
+
+    // eBay item URL (e.g. https://www.ebay.co.uk/itm/306777618478)
+    if (EbayService.itemIdFromUrl(trimmedLine)) {
+      const ebayDeals = await parseEbayItemUrlToDeals(trimmedLine);
+      results.push(...ebayDeals);
+      continue;
+    }
+
+    // eBay seller store URL (e.g. https://www.ebay.co.uk/str/thedropvinylrecords)
+    if (/ebay\.[a-z.]+\/str\//.test(trimmedLine)) {
+      const ebayDeals = await parseEbaySellerUrlToDeals(trimmedLine);
+      results.push(...ebayDeals);
+      continue;
+    }
 
     const priceMatch = line.match(/[£$€](\d+(?:\.\d{2})?)/);
     const price = priceMatch ? parseFloat(priceMatch[1]) : 0;
@@ -603,6 +762,16 @@ function showDealDetail(index) {
                 ? `
                 <a href="${deal.discogsUrl}" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 text-sm text-primary hover:underline">
                     View on Discogs
+                    <i data-feather="external-link" class="w-4 h-4"></i>
+                </a>
+            `
+                : ""
+            }
+            ${
+              deal.ebayUrl
+                ? `
+                <a href="${deal.ebayUrl}" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 text-sm text-primary hover:underline">
+                    View on eBay
                     <i data-feather="external-link" class="w-4 h-4"></i>
                 </a>
             `
