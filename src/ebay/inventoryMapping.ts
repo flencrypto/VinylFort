@@ -1,6 +1,6 @@
-import { ebayGraphQL, type EbayGraphQLClientOptions } from "./graphqlClient.js";
+import { ebayGraphQL, type EbayGraphQLClientOptions } from "./graphqlClient";
 
-export type { EbayGraphQLClientOptions } from "./graphqlClient.js";
+export type { EbayGraphQLClientOptions } from "./graphqlClient";
 
 // ---------------------------------------------------------------------------
 // Input types

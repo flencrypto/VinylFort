@@ -1,8 +1,10 @@
 {
+  // CommonJS + node resolution chosen for ts-node (CLI scripts) compatibility.
+  // Avoids the need for an ESM loader; upgrade to NodeNext + --esm if ESM is needed.
   "compilerOptions": {
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "commonjs",
+    "moduleResolution": "node",
     "lib": ["ES2022"],
     "outDir": "dist",
     "rootDir": ".",

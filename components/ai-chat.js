@@ -605,19 +605,42 @@ class AIChat extends HTMLElement {
       const field = this.pendingCorrection;
       this.pendingCorrection = null;
 
-      // Matrix corrections are dispatched as a matrix-search event
+      // Matrix corrections are dispatched as a matrix-search event.
+      // Parse optional side prefixes: "A: <val>  B: <val>", "A: <val>", "B: <val>".
       if (field === "matrix") {
-        this.addMessage(
-          `Got it! Searching Discogs for matrix number "${message}" and updating the fields…`,
-          "ai",
-        );
-        this.dispatchEvent(
-          new CustomEvent("matrix-search", {
-            detail: { value: message.trim(), side: null },
-            bubbles: true,
-            composed: true,
-          }),
-        );
+        const sideAMatch = message.match(/\bA\s*:\s*(.+?)(?=\s+B\s*:|\s*$)/i);
+        const sideBMatch = message.match(/\bB\s*:\s*(.+)$/i);
+
+        if (sideAMatch && sideBMatch) {
+          const sideA = sideAMatch[1].trim();
+          const sideB = sideBMatch[1].trim();
+          this.addMessage(
+            `Got it! Searching Discogs for matrix side A "${this.escapeHtml(sideA)}" and side B "${this.escapeHtml(sideB)}" and updating the fields…`,
+            "ai",
+          );
+          this.dispatchEvent(new CustomEvent("matrix-search", { detail: { value: sideA, side: "a" }, bubbles: true, composed: true }));
+          this.dispatchEvent(new CustomEvent("matrix-search", { detail: { value: sideB, side: "b" }, bubbles: true, composed: true }));
+        } else if (sideAMatch) {
+          const sideA = sideAMatch[1].trim();
+          this.addMessage(
+            `Got it! Searching Discogs for matrix side A "${this.escapeHtml(sideA)}" and updating the fields…`,
+            "ai",
+          );
+          this.dispatchEvent(new CustomEvent("matrix-search", { detail: { value: sideA, side: "a" }, bubbles: true, composed: true }));
+        } else if (sideBMatch) {
+          const sideB = sideBMatch[1].trim();
+          this.addMessage(
+            `Got it! Searching Discogs for matrix side B "${this.escapeHtml(sideB)}" and updating the fields…`,
+            "ai",
+          );
+          this.dispatchEvent(new CustomEvent("matrix-search", { detail: { value: sideB, side: "b" }, bubbles: true, composed: true }));
+        } else {
+          this.addMessage(
+            `Got it! Searching Discogs for matrix number "${this.escapeHtml(message.trim())}" and updating the fields…`,
+            "ai",
+          );
+          this.dispatchEvent(new CustomEvent("matrix-search", { detail: { value: message.trim(), side: null }, bubbles: true, composed: true }));
+        }
         return;
       }
 

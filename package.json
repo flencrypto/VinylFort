@@ -14,6 +14,7 @@
     "@types/node": "^20.19.35",
     "eslint": "^8.57.1",
     "eslint-plugin-security": "file:tools/eslint-plugin-security",
+    "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },
   "engines": {

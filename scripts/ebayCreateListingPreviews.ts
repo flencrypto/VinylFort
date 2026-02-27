@@ -27,7 +27,7 @@ import {
   type VinylFortRecord,
   type ListingPreview,
   type EbayGraphQLClientOptions,
-} from "../src/ebay/inventoryMapping.js";
+} from "../src/ebay/inventoryMapping";
 
 // ---------------------------------------------------------------------------
 // Configuration
