@@ -5,14 +5,16 @@
   "description": "VinylFort front-end application tooling",
   "scripts": {
     "lint": "eslint . --ext .js,.mjs,.cjs --max-warnings=0",
-    "typecheck": "echo \"No TypeScript sources configured yet\"",
+    "typecheck": "tsc --noEmit",
     "test": "echo \"No automated tests configured yet\"",
     "format": "prettier --check .",
     "preview:static": "python3 -m http.server 4173 --directory ."
   },
   "devDependencies": {
+    "@types/node": "^20.19.35",
     "eslint": "^8.57.1",
-    "eslint-plugin-security": "file:tools/eslint-plugin-security"
+    "eslint-plugin-security": "file:tools/eslint-plugin-security",
+    "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=20"
