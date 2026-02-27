@@ -355,6 +355,7 @@ class AIChat extends HTMLElement {
             <button class="quick-btn" data-action="wrong-title">Wrong Title</button>
             <button class="quick-btn" data-action="wrong-year">Wrong Year</button>
             <button class="quick-btn" data-action="wrong-cat">Wrong Catalogue</button>
+            <button class="quick-btn" data-action="wrong-matrix">Wrong Matrix No</button>
           </div>
         </div>
       </div>
@@ -406,6 +407,9 @@ class AIChat extends HTMLElement {
         break;
       case "wrong-cat":
         this.requestCorrection("catalogueNumber");
+        break;
+      case "wrong-matrix":
+        this.requestMatrixCorrection();
         break;
     }
   }
@@ -547,6 +551,15 @@ class AIChat extends HTMLElement {
     this.shadowRoot.getElementById("chatInput").focus();
   }
 
+  requestMatrixCorrection() {
+    this.addMessage(
+      "What's the correct matrix / runout number? You can enter side A, side B, or both (e.g. \"A: ILPS 9048 A-2  B: ILPS 9048 B-2\").",
+      "ai",
+      { meta: "Type the matrix / runout value below" },
+    );
+    this.pendingCorrection = "matrix";
+    this.shadowRoot.getElementById("chatInput").focus();
+  }
 
   extractDiscogsReleaseUrl(message) {
     if (!message) return null;
@@ -589,8 +602,49 @@ class AIChat extends HTMLElement {
   processUserMessage(message) {
     // Check if this is a correction response
     if (this.pendingCorrection) {
-      this.applyCorrection(this.pendingCorrection, message);
+      const field = this.pendingCorrection;
       this.pendingCorrection = null;
+
+      // Matrix corrections are dispatched as a matrix-search event.
+      // Parse optional side prefixes: "A: <val>  B: <val>", "A: <val>", "B: <val>".
+      if (field === "matrix") {
+        const sideAMatch = message.match(/\bA\s*:\s*(.+?)(?=\s+B\s*:|\s*$)/i);
+        const sideBMatch = message.match(/\bB\s*:\s*(.+)$/i);
+
+        if (sideAMatch && sideBMatch) {
+          const sideA = sideAMatch[1].trim();
+          const sideB = sideBMatch[1].trim();
+          this.addMessage(
+            `Got it! Searching Discogs for matrix side A "${this.escapeHtml(sideA)}" and side B "${this.escapeHtml(sideB)}" and updating the fields…`,
+            "ai",
+          );
+          this.dispatchEvent(new CustomEvent("matrix-search", { detail: { value: sideA, side: "a" }, bubbles: true, composed: true }));
+          this.dispatchEvent(new CustomEvent("matrix-search", { detail: { value: sideB, side: "b" }, bubbles: true, composed: true }));
+        } else if (sideAMatch) {
+          const sideA = sideAMatch[1].trim();
+          this.addMessage(
+            `Got it! Searching Discogs for matrix side A "${this.escapeHtml(sideA)}" and updating the fields…`,
+            "ai",
+          );
+          this.dispatchEvent(new CustomEvent("matrix-search", { detail: { value: sideA, side: "a" }, bubbles: true, composed: true }));
+        } else if (sideBMatch) {
+          const sideB = sideBMatch[1].trim();
+          this.addMessage(
+            `Got it! Searching Discogs for matrix side B "${this.escapeHtml(sideB)}" and updating the fields…`,
+            "ai",
+          );
+          this.dispatchEvent(new CustomEvent("matrix-search", { detail: { value: sideB, side: "b" }, bubbles: true, composed: true }));
+        } else {
+          this.addMessage(
+            `Got it! Searching Discogs for matrix number "${this.escapeHtml(message.trim())}" and updating the fields…`,
+            "ai",
+          );
+          this.dispatchEvent(new CustomEvent("matrix-search", { detail: { value: message.trim(), side: null }, bubbles: true, composed: true }));
+        }
+        return;
+      }
+
+      this.applyCorrection(field, message);
       return;
     }
 
@@ -612,6 +666,16 @@ class AIChat extends HTMLElement {
           composed: true,
         }),
       );
+      return;
+    }
+
+    // "this is a 1973 repress/reppress" – extract year.
+    // p{1,2} intentionally accepts the common typo "reppress" as well as "repress".
+    const repressMatch = message.match(
+      /(?:this\s+is\s+(?:a\s+)?|it'?s\s+(?:a\s+)?)?(19[0-9]{2}|20[0-2][0-9])\s+re-?p{1,2}ress(?:ing)?/i,
+    );
+    if (repressMatch) {
+      this.applyCorrection("year", repressMatch[1]);
       return;
     }
 
@@ -641,13 +705,19 @@ class AIChat extends HTMLElement {
       { regex: /wrong\s+artist/i, field: "artist", needsValue: true },
       { regex: /wrong\s+title/i, field: "title", needsValue: true },
       { regex: /wrong\s+year/i, field: "year", needsValue: true },
+      { regex: /wrong\s+(?:catalogue|catalog|cat(?:\s*no?)?)/i, field: "catalogueNumber", needsValue: true },
+      { regex: /wrong\s+matrix/i, field: "matrix", needsValue: true },
     ];
 
     for (const pattern of correctionPatterns) {
       const match = message.match(pattern.regex);
       if (match) {
         if (pattern.needsValue) {
-          this.requestCorrection(pattern.field);
+          if (pattern.field === "matrix") {
+            this.requestMatrixCorrection();
+          } else {
+            this.requestCorrection(pattern.field);
+          }
         } else {
           this.applyCorrection(pattern.field, match[1].trim());
         }
@@ -702,15 +772,165 @@ class AIChat extends HTMLElement {
       }
     }
 
-    // General question or confirmation
+    // Try to parse a full record description (e.g. "Black Sabbath - Paranoid Vinyl LP 1973 6360 011 Excellent Condition")
+    const parsed = this.parseRecordDescription(message);
+    if (Object.keys(parsed).length >= 2) {
+      this.applyMultipleCorrections(parsed);
+      return;
+    }
+
+    // Single standalone year (e.g. "1971" or "it came out in 1971").
+    // Limit to short messages (≤ 6 words) so that a full description with a year
+    // goes through parseRecordDescription instead of being treated as a year-only input.
+    const yearOnlyMatch = message.match(/\b(19[0-9]{2}|20[0-2][0-9])\b/);
+    if (yearOnlyMatch && message.trim().split(/\s+/).length <= 6) {
+      this.applyCorrection("year", yearOnlyMatch[1]);
+      return;
+    }
+
+    // Generic fallback – let the user know what we can do
     this.showTyping();
     setTimeout(() => {
       this.hideTyping();
       this.addMessage(
-        "I understand. You can tell me about any other corrections needed, or click 'All Correct' if everything looks good!",
+        "I'm not sure how to interpret that. You can:<br>" +
+        "• Use the <strong>Wrong [Field]</strong> buttons to correct a specific field<br>" +
+        "• Type a full description like <em>\"Artist – Title LP Year CatNo Condition\"</em><br>" +
+        "• Say something like <em>\"the year is 1973\"</em> or <em>\"the artist is Black Sabbath\"</em><br>" +
+        "• Paste a Discogs release URL to fetch the correct details<br>" +
+        "Or click <strong>✓ All Correct</strong> if everything looks good!",
         "ai",
       );
     }, 800);
+  }
+
+  /**
+   * Parse a free-form record description into individual field corrections.
+   * Handles formats like:
+   *   "Black Sabbath - Paranoid Vinyl LP 1973 6360 011 Excellent Condition"
+   */
+  parseRecordDescription(message) {
+    const extracted = {};
+    let remaining = message.trim();
+
+    // Condition keywords (checked early so they don't pollute catNo parsing)
+    const conditionRegex =
+      /\b(Mint|Near\s+Mint|NM|Excellent|Very\s+Good\s+Plus|Very\s+Good|Good\s+Plus|Good|Fair|Poor|VG\+|VG|G\+|G|M-?)(?:\s+Condition)?\b/i;
+    const conditionMatch = remaining.match(conditionRegex);
+    if (conditionMatch) {
+      extracted.condition = conditionMatch[0].replace(/\s*condition\s*/i, "").trim();
+      remaining = remaining.replace(conditionMatch[0], " ").replace(/\s{2,}/g, " ").trim();
+    }
+
+    // Format keywords
+    const formatRegex =
+      /\b((?:Vinyl\s+)?(?:Double\s+LP|LP|EP|Single|12"|10"|7"|Album))\b/i;
+    const formatMatch = remaining.match(formatRegex);
+    if (formatMatch) {
+      extracted.format = formatMatch[1].trim();
+      remaining = remaining.replace(formatMatch[0], " ").replace(/\s{2,}/g, " ").trim();
+    }
+
+    // Year
+    const yearMatch = remaining.match(/\b(19[0-9]{2}|20[0-2][0-9])\b/);
+    if (yearMatch) {
+      extracted.year = yearMatch[1];
+      remaining = remaining.replace(yearMatch[0], " ").replace(/\s{2,}/g, " ").trim();
+    }
+
+    // "Artist – Title" split (dash variants, mandatory for a full-description parse)
+    const dashMatch = remaining.match(/^(.+?)\s*[-–—]\s*(.+)/);
+    if (dashMatch) {
+      extracted.artist = dashMatch[1].trim();
+      const afterTitle = dashMatch[2].trim();
+
+      // Try to extract a catalogue number from the end of afterTitle.
+      // We try progressively more general patterns so that the most specific wins.
+      let titlePart = afterTitle;
+      let catPart = null;
+
+      // Evaluate catalogue-number patterns in priority order (short-circuit so we
+      // only run as many regexes as needed).
+      // Pattern 1 – two numeric groups: "6360 011", "RS 1 3321"
+      const twoNumMatch = afterTitle.match(/^(.*?)\s+(\d{3,}\s+\d{2,})\s*$/);
+      // Pattern 2 – label-prefix + digits: "SD 7208", "ILPS 9048"
+      const labelNumMatch = !twoNumMatch && afterTitle.match(/^(.*?)\s+([A-Z]{1,6}[-\s]\d[\w]*)\s*$/);
+      // Pattern 3 – standalone 4+ digit number at end: "90125"
+      const bareNumMatch = !(twoNumMatch || labelNumMatch) && afterTitle.match(/^(.*?)\s+(\d{4,})\s*$/);
+
+      if (twoNumMatch && twoNumMatch[1].trim().length > 0) {
+        titlePart = twoNumMatch[1].trim();
+        catPart = twoNumMatch[2].trim();
+      } else if (labelNumMatch && labelNumMatch[1].trim().length > 0) {
+        titlePart = labelNumMatch[1].trim();
+        catPart = labelNumMatch[2].trim();
+      } else if (bareNumMatch && bareNumMatch[1].trim().length > 0) {
+        titlePart = bareNumMatch[1].trim();
+        catPart = bareNumMatch[2].trim();
+      }
+
+      extracted.title = titlePart;
+      if (catPart) extracted.catalogueNumber = catPart;
+    }
+
+    // Remove empty / falsy values
+    for (const key of Object.keys(extracted)) {
+      if (!extracted[key]) delete extracted[key];
+    }
+
+    return extracted;
+  }
+
+  /** Escape a string for safe insertion into innerHTML. */
+  escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  /**
+   * Apply several field corrections at once and show a single summary message.
+   */
+  applyMultipleCorrections(corrections) {
+    const applied = [];
+
+    for (const [field, value] of Object.entries(corrections)) {
+      if (!value) continue;
+      const originalValue = this.currentDetection?.[field];
+      this.corrections[field] = value;
+      this.learnFromCorrection(field, originalValue, value);
+      applied.push({ field, originalValue, newValue: value });
+
+      this.dispatchEvent(
+        new CustomEvent("field-corrected", {
+          detail: { field, value, originalValue },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+    }
+
+    if (applied.length === 0) {
+      this.addMessage(
+        "I couldn't extract any field values from that. Try using the <strong>Wrong [Field]</strong> buttons to correct individual fields.",
+        "ai",
+      );
+      return;
+    }
+
+    const summary = applied
+      .map(({ field, newValue }) => `<strong>${this.escapeHtml(field)}</strong>: "${this.escapeHtml(newValue)}"`)
+      .join(", ");
+
+    this.addMessage(
+      `Got it! I've updated the following fields: ${summary}. Does everything look correct now?`,
+      "ai",
+      { isCorrection: true, meta: "Multiple corrections applied" },
+    );
+
+    this.updateDetectedFieldsDisplay();
   }
 
   applyCorrection(field, newValue) {
