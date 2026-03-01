@@ -1020,7 +1020,8 @@ function buildEbaySearchQuery() {
 function openEbaySearch() {
   const q = buildEbaySearchQuery();
   if (!q || q === encodeURIComponent("vinyl")) {
-    alert("Please enter an artist or album title to search.");
+    showToast("Please enter an artist or album title to search.", "warning");
+    document.getElementById("ebaySearchArtist")?.focus();
     return;
   }
   const condition = document.getElementById("ebaySearchCondition")?.value || "";
@@ -1035,7 +1036,8 @@ function openEbaySearch() {
 function openEbaySearchUS() {
   const q = buildEbaySearchQuery();
   if (!q || q === encodeURIComponent("vinyl")) {
-    alert("Please enter an artist or album title to search.");
+    showToast("Please enter an artist or album title to search.", "warning");
+    document.getElementById("ebaySearchArtist")?.focus();
     return;
   }
   window.open(
@@ -1048,7 +1050,8 @@ function openEbaySearchUS() {
 function openEbaySoldSearch() {
   const q = buildEbaySearchQuery();
   if (!q || q === encodeURIComponent("vinyl")) {
-    alert("Please enter an artist or album title to search.");
+    showToast("Please enter an artist or album title to search.", "warning");
+    document.getElementById("ebaySearchArtist")?.focus();
     return;
   }
   window.open(

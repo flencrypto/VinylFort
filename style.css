@@ -176,8 +176,8 @@ body {
   /* Always show remove button on touch devices */
   .photo-thumb .remove-btn {
     opacity: 1;
-    width: 32px;
-    height: 32px;
+    min-width: 44px;
+    min-height: 44px;
   }
 
   /* Larger touch targets for drop zone */
