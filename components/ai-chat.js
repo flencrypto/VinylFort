@@ -1099,6 +1099,62 @@ class AIChat extends HTMLElement {
     return { ...this.currentDetection, ...this.corrections };
   }
 
+  showDiscogsVerification(discogsData, detection) {
+    if (!discogsData) return;
+    const messagesArea = this.shadowRoot.getElementById("messagesArea");
+
+    const tracklist = discogsData.tracklist || [];
+    const identifiers = discogsData.identifiers || [];
+    const barcodeInfo = identifiers.find((i) => i.type === "Barcode");
+    const matrixIds = identifiers.filter((i) => i.type === "Matrix / Runout" || i.type === "Runout");
+    const notes = discogsData.notes || "";
+
+    const notesLower = notes.toLowerCase();
+    const features = [];
+    if (notesLower.includes("gatefold")) features.push("🎶 Gatefold sleeve");
+    if (notesLower.includes("insert")) features.push("📄 Original insert");
+    if (notesLower.includes("poster")) features.push("🖼️ Poster included");
+    if (notesLower.includes("hype sticker") || notesLower.includes("hype-sticker")) features.push("🏷️ Hype sticker");
+    if (notesLower.includes("inner sleeve")) features.push("💿 Original inner sleeve");
+    if (notesLower.includes("obi")) features.push("🎌 OBI strip");
+    if (notesLower.includes("lyric sheet") || notesLower.includes("lyrics")) features.push("📝 Lyric sheet");
+    if (notesLower.includes("booklet")) features.push("📖 Booklet");
+
+    const tracklistSummary = tracklist.length > 0
+      ? `✅ <strong>Tracklist confirmed</strong> — ${tracklist.length} tracks verified against Discogs.`
+      : `⚠️ <strong>Tracklist not available</strong> — please verify manually.`;
+
+    const barcodeHtml = barcodeInfo
+      ? `<br>🔢 <strong>Barcode:</strong> <code style="font-size:11px">${this.escapeHtml(barcodeInfo.value)}</code>`
+      : "";
+
+    const matrixHtml = matrixIds.length > 0
+      ? `<br>⚙️ <strong>Matrix/Runout:</strong> <code style="font-size:11px">${matrixIds.map((m) => this.escapeHtml(m.value)).join(" | ")}</code>`
+      : "";
+
+    const featuresHtml = features.length > 0
+      ? `<br><br><strong>Notable Features:</strong><br>${features.join("<br>")}`
+      : "";
+
+    const notesHtml = notes.trim()
+      ? `<br><br><strong>Release Notes:</strong><br><span style="font-size:11px;color:#94a3b8">${this.escapeHtml(notes.substring(0, 250))}${notes.length > 250 ? "…" : ""}</span>`
+      : "";
+
+    const msg = document.createElement("div");
+    msg.className = "message ai";
+    msg.innerHTML = `
+      <strong>📀 Discogs Release Verified</strong><br><br>
+      ${tracklistSummary}
+      ${barcodeHtml}
+      ${matrixHtml}
+      ${featuresHtml}
+      ${notesHtml}
+      <br><br><span style="font-size:11px;color:#64748b">The eBay listing HTML has been updated with this information.</span>
+    `;
+    messagesArea.appendChild(msg);
+    messagesArea.scrollTop = messagesArea.scrollHeight;
+  }
+
   clear() {
     this.messages = [];
     this.corrections = {};
