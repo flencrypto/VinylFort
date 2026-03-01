@@ -975,6 +975,266 @@ function importFromCSV() {
   document.getElementById("bulkCSVInput").click();
 }
 
+// ─── Release Price Lookup ──────────────────────────────────────────────────
+
+/**
+ * Look up a Discogs release by URL or ID, fetch pricing data + cheap
+ * Discogs marketplace listings, and render a comparison panel.
+ */
+async function lookupReleaseDeals() {
+  const rawInput = document.getElementById("releaseLookupInput")?.value.trim();
+  const condition = document.getElementById("releaseLookupCondition")?.value || "VG+";
+  const resultEl = document.getElementById("releaseLookupResult");
+  if (!resultEl) return;
+
+  if (!rawInput) {
+    showToast("Enter a Discogs release URL or ID first", "warning");
+    document.getElementById("releaseLookupInput")?.focus();
+    return;
+  }
+
+  // Try to parse release ID from URL or bare number
+  let releaseId = null;
+  const bareNum = rawInput.match(/^\d+$/);
+  if (bareNum) {
+    releaseId = parseInt(rawInput, 10);
+  } else if (window.discogsService) {
+    releaseId = window.discogsService.extractReleaseIdFromUrl(rawInput);
+  }
+
+  if (!releaseId) {
+    showToast("Could not parse a Discogs release ID from that input", "error");
+    return;
+  }
+
+  // Show loading state
+  resultEl.classList.remove("hidden");
+  resultEl.innerHTML = `
+    <div class="flex items-center gap-3 p-4 rounded-xl bg-surface border border-gray-700 text-gray-400">
+      <svg class="animate-spin w-5 h-5 text-deal" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+      </svg>
+      Looking up release #${releaseId}…
+    </div>`;
+
+  // Fetch release details
+  let release = null;
+  let priceSuggestions = null;
+  let marketplaceListings = [];
+
+  if (window.discogsService && (window.discogsService.token || window.discogsService.key)) {
+    try {
+      release = await window.discogsService.getReleaseDetails(releaseId);
+    } catch (e) {
+      console.warn("Release fetch failed:", e.message);
+    }
+    try {
+      priceSuggestions = await window.discogsService.getPriceSuggestions(releaseId);
+    } catch (e) {
+      console.warn("Price suggestions failed:", e.message);
+    }
+  }
+
+  // Derive median / suggested price for the chosen condition
+  const conditionLabelMap = {
+    M: "Mint (M)",
+    NM: "Near Mint (NM or M-)",
+    "VG+": "Very Good Plus (VG+)",
+    VG: "Very Good (VG)",
+    "G+": "Good Plus (G+)",
+    G: "Good (G)",
+  };
+  const condLabel = conditionLabelMap[condition] || condition;
+  const suggestedPrice = priceSuggestions
+    ? (priceSuggestions[condLabel]?.value || null)
+    : null;
+
+  // Use lowest price from release as floor reference
+  const lowestPrice = release?.lowest_price || null;
+
+  // Fetch cheap marketplace listings if we have API access
+  if (window.discogsService && (window.discogsService.token || window.discogsService.key)) {
+    try {
+      const medianRef = suggestedPrice || lowestPrice;
+      marketplaceListings = await window.discogsService.getMarketplaceListings(
+        releaseId,
+        10,
+        medianRef ? medianRef * 1.1 : null,
+      );
+    } catch (e) {
+      console.warn("Marketplace listings failed:", e.message);
+    }
+  }
+
+  renderReleaseDealPanel(releaseId, release, suggestedPrice, lowestPrice, marketplaceListings, condition, priceSuggestions);
+}
+
+/**
+ * Render the Release Price Lookup results panel.
+ */
+function renderReleaseDealPanel(releaseId, release, suggestedPrice, lowestPrice, marketplaceListings, condition, priceSuggestions) {
+  const resultEl = document.getElementById("releaseLookupResult");
+  if (!resultEl) return;
+
+  const artist = release
+    ? (release.artists || []).map((a) => a.name.replace(/\s*\(\d+\)\s*$/, "")).join(", ")
+    : "Unknown Artist";
+  const title = release?.title || "Unknown Title";
+  const year = release?.year || "";
+  const label = release?.labels?.[0]?.name || "";
+  const numForSale = release?.num_for_sale || 0;
+  const discogsReleaseUrl = release?.uri || `https://www.discogs.com/release/${releaseId}`;
+  const discogsMarketUrl = `https://www.discogs.com/sell/list?release_id=${releaseId}&sort=price%2Casc`;
+
+  // Build eBay/Google search URLs — preserve the artist/title as-is for best search results
+  const searchTermEncoded = encodeURIComponent(`${artist} ${title} vinyl record`);
+  const ebayUKUrl = `https://www.ebay.co.uk/sch/i.html?_nkw=${searchTermEncoded}&_sacat=176985&LH_ItemCondition=3000`;
+  const ebayUKSoldUrl = `https://www.ebay.co.uk/sch/i.html?_nkw=${searchTermEncoded}&_sacat=176985&LH_Sold=1&LH_Complete=1`;
+  const ebayUSUrl = `https://www.ebay.com/sch/i.html?_nkw=${searchTermEncoded}&_sacat=176985&LH_ItemCondition=3000`;
+  const googleEbayUrl = `https://www.google.com/search?q=${encodeURIComponent(`site:ebay.co.uk "${artist}" "${title}" vinyl`)}`;
+
+  // Price reference cards
+  const priceCards = [];
+  if (lowestPrice) {
+    priceCards.push(`
+      <div class="p-3 bg-surface rounded-lg border border-gray-700">
+        <p class="text-xs text-gray-500 mb-1">Discogs Lowest Now</p>
+        <p class="text-xl font-bold text-profit">£${parseFloat(lowestPrice).toFixed(2)}</p>
+        <p class="text-xs text-gray-600">${numForSale} for sale</p>
+      </div>`);
+  }
+  if (suggestedPrice) {
+    priceCards.push(`
+      <div class="p-3 bg-surface rounded-lg border border-deal/40">
+        <p class="text-xs text-gray-500 mb-1">Discogs Suggested (${condition})</p>
+        <p class="text-xl font-bold text-deal">£${parseFloat(suggestedPrice).toFixed(2)}</p>
+        <p class="text-xs text-gray-600">Use as target sell price</p>
+      </div>`);
+  }
+
+  // All condition suggestions
+  let suggestionsHtml = "";
+  if (priceSuggestions && Object.keys(priceSuggestions).length > 0) {
+    const rows = Object.entries(priceSuggestions)
+      .filter(([, v]) => v?.value)
+      .map(([cond, v]) => `
+        <div class="flex justify-between items-center py-1 border-b border-gray-800 text-sm">
+          <span class="text-gray-400">${cond}</span>
+          <span class="font-medium text-gray-200">£${parseFloat(v.value).toFixed(2)}</span>
+        </div>`)
+      .join("");
+    suggestionsHtml = rows
+      ? `<div class="mt-4">
+           <p class="text-xs text-gray-500 uppercase mb-2 font-semibold">Discogs Suggested Prices by Condition</p>
+           ${rows}
+         </div>`
+      : "";
+  }
+
+  // Cheap Discogs marketplace listings
+  let listingsHtml = "";
+  if (marketplaceListings.length > 0) {
+    const rows = marketplaceListings.slice(0, 8).map((listing) => {
+      const price = parseFloat(listing.price?.value || 0);
+      const cond = listing.condition || "Unknown";
+      const sleeveCondition = listing.sleeve_condition ? ` / Sleeve: ${listing.sleeve_condition}` : "";
+      const seller = listing.seller?.username || "";
+      const listingUrl = listing.uri ? `https://www.discogs.com${listing.uri}` : discogsMarketUrl;
+      const isBelowSuggested = suggestedPrice && suggestedPrice > 0 && price < suggestedPrice;
+      const priceDiff = (suggestedPrice && suggestedPrice > 0) ? ((suggestedPrice - price) / suggestedPrice * 100).toFixed(0) : null;
+      return `
+        <div class="flex items-center justify-between p-3 rounded-lg border ${isBelowSuggested ? "border-profit/40 bg-profit/5" : "border-gray-700 bg-surface"} mb-2">
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-200">${cond}${sleeveCondition}</p>
+            ${seller ? `<p class="text-xs text-gray-500">${seller}</p>` : ""}
+          </div>
+          <div class="text-right ml-4 shrink-0">
+            <p class="text-base font-bold ${isBelowSuggested ? "text-profit" : "text-gray-200"}">£${price.toFixed(2)}</p>
+            ${priceDiff && isBelowSuggested ? `<p class="text-xs text-profit">${priceDiff}% below target</p>` : ""}
+          </div>
+          <a href="${listingUrl}" target="_blank" rel="noopener noreferrer"
+            class="ml-3 shrink-0 px-2 py-1 border border-gray-600 rounded text-xs text-gray-400 hover:border-deal hover:text-deal transition-all">
+            View
+          </a>
+        </div>`;
+    }).join("");
+    listingsHtml = `
+      <div class="mt-4">
+        <p class="text-xs text-gray-500 uppercase mb-2 font-semibold">
+          Cheapest Discogs Listings${suggestedPrice ? ` at or near £${parseFloat(suggestedPrice).toFixed(2)} target` : ""}
+        </p>
+        ${rows}
+        <a href="${discogsMarketUrl}" target="_blank" rel="noopener noreferrer"
+          class="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1">
+          View all on Discogs marketplace →
+        </a>
+      </div>`;
+  } else if (window.discogsService && (window.discogsService.token || window.discogsService.key)) {
+    listingsHtml = `<p class="text-sm text-gray-500 mt-4">No Discogs marketplace listings found below the target price.</p>`;
+  } else {
+    listingsHtml = `
+      <p class="text-sm text-yellow-500/80 mt-4">
+        ⚠ Add Discogs API credentials in Settings to see live marketplace listings.
+      </p>`;
+  }
+
+  resultEl.innerHTML = `
+    <div class="space-y-4">
+      <!-- Release header -->
+      <div class="p-4 rounded-xl bg-surface border border-deal/30 flex flex-col sm:flex-row sm:items-start gap-4">
+        <div class="flex-1">
+          <p class="text-xs text-gray-500 mb-1">Release #${releaseId}</p>
+          <h3 class="text-lg font-bold text-gray-100">${artist}</h3>
+          <p class="text-gray-400">${title}${year ? ` (${year})` : ""}${label ? ` · ${label}` : ""}</p>
+        </div>
+        <a href="${discogsReleaseUrl}" target="_blank" rel="noopener noreferrer"
+          class="text-xs text-primary hover:underline shrink-0 self-start">
+          View on Discogs ↗
+        </a>
+      </div>
+
+      <!-- Price reference cards -->
+      ${priceCards.length > 0 ? `<div class="grid grid-cols-2 gap-3">${priceCards.join("")}</div>` : ""}
+
+      ${suggestionsHtml}
+      ${listingsHtml}
+
+      <!-- Buy opportunity links -->
+      <div class="mt-4 pt-4 border-t border-gray-800">
+        <p class="text-xs text-gray-500 uppercase mb-3 font-semibold">Find Buy Opportunities</p>
+        <div class="flex flex-wrap gap-2">
+          <a href="${ebayUKUrl}" target="_blank" rel="noopener noreferrer"
+            class="px-3 py-2 bg-red-600/20 border border-red-500/40 text-red-400 rounded-lg text-sm font-medium hover:bg-red-600/30 transition-all flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            eBay UK (Live)
+          </a>
+          <a href="${ebayUKSoldUrl}" target="_blank" rel="noopener noreferrer"
+            class="px-3 py-2 bg-surface border border-gray-700 text-gray-300 rounded-lg text-sm font-medium hover:border-deal hover:text-deal transition-all flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            eBay UK Sold Prices
+          </a>
+          <a href="${ebayUSUrl}" target="_blank" rel="noopener noreferrer"
+            class="px-3 py-2 bg-surface border border-gray-700 text-gray-300 rounded-lg text-sm font-medium hover:border-deal hover:text-deal transition-all flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            eBay US (Live)
+          </a>
+          <a href="${googleEbayUrl}" target="_blank" rel="noopener noreferrer"
+            class="px-3 py-2 bg-surface border border-gray-700 text-gray-300 rounded-lg text-sm font-medium hover:border-blue-400 hover:text-blue-400 transition-all flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Google → eBay
+          </a>
+          <a href="${discogsMarketUrl}" target="_blank" rel="noopener noreferrer"
+            class="px-3 py-2 bg-surface border border-gray-700 text-gray-300 rounded-lg text-sm font-medium hover:border-primary hover:text-primary transition-all flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+            Discogs Marketplace
+          </a>
+        </div>
+        <p class="text-xs text-gray-600 mt-2">Compare prices found on eBay against the Discogs suggested price to spot undervalued listings.</p>
+      </div>
+    </div>`;
+}
+
 // showToast helper if not already defined
 if (typeof showToast !== "function") {
   function showToast(message, type = "success") {
