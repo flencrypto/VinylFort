@@ -1009,3 +1009,54 @@ if (typeof showToast !== "function") {
     }, 3000);
   }
 }
+
+// eBay Price Research helpers
+function buildEbaySearchQuery() {
+  const artist = document.getElementById("ebaySearchArtist")?.value.trim() || "";
+  const title = document.getElementById("ebaySearchTitle")?.value.trim() || "";
+  return encodeURIComponent([artist, title, "vinyl"].filter(Boolean).join(" "));
+}
+
+function openEbaySearch() {
+  const q = buildEbaySearchQuery();
+  if (!q || q === encodeURIComponent("vinyl")) {
+    showToast("Please enter an artist or album title to search.", "warning");
+    document.getElementById("ebaySearchArtist")?.focus();
+    return;
+  }
+  const condition = document.getElementById("ebaySearchCondition")?.value || "";
+  const extra = condition ? `&${condition}` : "";
+  window.open(
+    `https://www.ebay.co.uk/sch/i.html?_nkw=${q}&_sacat=176985${extra}`,
+    "_blank",
+    "noopener,noreferrer",
+  );
+}
+
+function openEbaySearchUS() {
+  const q = buildEbaySearchQuery();
+  if (!q || q === encodeURIComponent("vinyl")) {
+    showToast("Please enter an artist or album title to search.", "warning");
+    document.getElementById("ebaySearchArtist")?.focus();
+    return;
+  }
+  window.open(
+    `https://www.ebay.com/sch/i.html?_nkw=${q}&_sacat=176985`,
+    "_blank",
+    "noopener,noreferrer",
+  );
+}
+
+function openEbaySoldSearch() {
+  const q = buildEbaySearchQuery();
+  if (!q || q === encodeURIComponent("vinyl")) {
+    showToast("Please enter an artist or album title to search.", "warning");
+    document.getElementById("ebaySearchArtist")?.focus();
+    return;
+  }
+  window.open(
+    `https://www.ebay.co.uk/sch/i.html?_nkw=${q}&_sacat=176985&LH_Sold=1&LH_Complete=1`,
+    "_blank",
+    "noopener,noreferrer",
+  );
+}

@@ -180,13 +180,12 @@ function initDropZone() {
   }
   dz._initialized = true;
 
-  // Click to browse - use event delegation pattern
+  // Click to browse - delegate to file input; skip if clicking label/input (handled natively)
   dz.addEventListener("click", (e) => {
-    // Prevent triggering when clicking on child elements like the spinner
     if (e.target.closest("#uploadSpinner")) return;
     if (e.target.closest(".remove-btn")) return;
-    e.preventDefault();
-    e.stopPropagation();
+    // Label clicks natively open the file picker; avoid double-trigger
+    if (e.target.closest("label") || e.target.tagName === "INPUT") return;
     pInput.click();
   });
 
@@ -248,6 +247,27 @@ function initDropZone() {
       pInput.value = "";
     }
   });
+
+  // Paste support – works when the drop zone or document has focus
+  function handlePasteImages(e) {
+    const items = Array.from(e.clipboardData?.items || []);
+    const imageFiles = items
+      .filter((item) => item.type.startsWith("image/"))
+      .map((item) => item.getAsFile())
+      .filter(Boolean);
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      updateProgressSteps(2);
+      addPhotos(imageFiles);
+      showToast(
+        `Pasted ${imageFiles.length} image${imageFiles.length > 1 ? "s" : ""} from clipboard`,
+        "success",
+      );
+    }
+  }
+
+  dz.addEventListener("paste", handlePasteImages);
+  document.addEventListener("paste", handlePasteImages);
 }
 function handleDrop(e) {
   e.preventDefault();

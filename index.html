@@ -8,6 +8,7 @@
     />
     <title>VinylVault Pro - eBay Listing Generator</title>
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico" />
+    <link rel="manifest" href="/manifest.json" />
     <link rel="stylesheet" href="style.css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
@@ -328,13 +329,18 @@
                 <p class="text-sm text-gray-500 mb-3">
                   Front, back, labels, deadwax, inner sleeve, inserts
                 </p>
-                <button type="button" onclick="event.stopPropagation();document.getElementById('photoInput').click()"
-                  class="px-4 py-2 bg-primary/20 border border-primary/40 text-primary rounded-lg text-sm font-medium hover:bg-primary/30 transition-colors">
+                <label for="photoInput" onclick="event.stopPropagation()"
+                  class="inline-block cursor-pointer px-4 py-2 bg-primary/20 border border-primary/40 text-primary rounded-lg text-sm font-medium hover:bg-primary/30 transition-colors">
                   <i data-feather="folder" class="w-4 h-4 inline-block mr-1"></i>
                   Browse Files
-                </button>
+                </label>
                 <p
-                  class="text-xs text-primary mt-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                  class="text-xs text-gray-500 mt-2 mb-1"
+                >
+                  or <kbd aria-label="Control plus V" class="px-1 py-0.5 bg-gray-700 rounded text-xs">Ctrl+V</kbd> / <kbd aria-label="Command plus V" class="px-1 py-0.5 bg-gray-700 rounded text-xs">⌘V</kbd> to paste an image
+                </p>
+                <p
+                  class="text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   AI will auto-detect record details
                 </p>
@@ -343,7 +349,7 @@
                   id="photoInput"
                   multiple
                   accept="image/*"
-                  style="position:absolute;opacity:0;width:0;height:0;overflow:hidden"
+                  class="sr-only"
                   aria-label="Upload record photos"
                   aria-describedby="photo-upload-help"
                 />
