@@ -1,0 +1,43 @@
+{
+  "name": "VinylVault Pro",
+  "short_name": "VinylVault",
+  "description": "Professional eBay listing generator and deal finder for vinyl records",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0e0c0b",
+  "theme_color": "#c8973f",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/static/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["music", "shopping", "utilities"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Create Listing",
+      "short_name": "Listing",
+      "description": "Create a new eBay listing",
+      "url": "/",
+      "icons": [{ "src": "/static/favicon.ico", "sizes": "any" }]
+    },
+    {
+      "name": "Deal Finder",
+      "short_name": "Deals",
+      "description": "Find vinyl record deals",
+      "url": "/deals.html",
+      "icons": [{ "src": "/static/favicon.ico", "sizes": "any" }]
+    },
+    {
+      "name": "My Collection",
+      "short_name": "Collection",
+      "description": "Browse your record collection",
+      "url": "/collection.html",
+      "icons": [{ "src": "/static/favicon.ico", "sizes": "any" }]
+    }
+  ]
+}

@@ -172,6 +172,18 @@ body {
   button:active {
     transform: scale(0.95);
   }
+
+  /* Always show remove button on touch devices */
+  .photo-thumb .remove-btn {
+    opacity: 1;
+    width: 32px;
+    height: 32px;
+  }
+
+  /* Larger touch targets for drop zone */
+  #dropZone {
+    padding: 2rem 1rem;
+  }
 }
 
 /* Reduced motion for accessibility */
