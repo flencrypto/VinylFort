@@ -377,6 +377,39 @@ class DiscogsService {
     }
   }
 
+  /**
+   * Fetch cheap Discogs marketplace listings for a release, sorted by price
+   * ascending. Returns up to `limit` listings whose price is at or below
+   * `medianPrice` (when provided).
+   *
+   * @param {number} releaseId
+   * @param {number} [limit=10]
+   * @param {number|null} [medianPrice=null]
+   * @returns {Promise<object[]>}
+   */
+  async getMarketplaceListings(releaseId, limit = 10, medianPrice = null) {
+    if ((!this.token && (!this.key || !this.secret)) || !releaseId) return [];
+
+    try {
+      const response = await this.fetchWithRetry(
+        `${this.baseUrl}/marketplace/search?release_id=${releaseId}&sort=price&sort_order=asc&per_page=${limit}`,
+        { headers: this.getHeaders() },
+      );
+      await this.handleResponse(response);
+      const data = await response.json();
+      const listings = data.listings || [];
+      if (medianPrice !== null && medianPrice > 0) {
+        return listings.filter(
+          (l) => parseFloat(l.price?.value || 0) <= medianPrice,
+        );
+      }
+      return listings;
+    } catch (e) {
+      console.warn("Discogs marketplace search failed:", e.message);
+      return [];
+    }
+  }
+
   extractReleaseIdFromUrl(value) {
     if (!value) return null;
 

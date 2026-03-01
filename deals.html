@@ -377,6 +377,43 @@
         </div>
       </div>
 
+      <!-- Release Price Lookup (Discogs + eBay) -->
+      <div class="mt-8 bg-surface-light rounded-2xl p-6 border border-gray-800" id="releaseLookupPanel">
+        <h2 class="text-xl font-semibold mb-1 flex items-center gap-2">
+          <i data-feather="disc" class="w-5 h-5 text-deal"></i>
+          Release Price Lookup
+        </h2>
+        <p class="text-sm text-gray-400 mb-4">
+          Enter a Discogs release URL or ID to fetch the median sale value and find the best buys across Discogs and eBay.
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+          <div class="sm:col-span-2">
+            <label class="block text-xs text-gray-500 mb-1" for="releaseLookupInput">Discogs Release URL or ID</label>
+            <input type="text" id="releaseLookupInput"
+              placeholder="https://www.discogs.com/release/249504  or  249504"
+              class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg text-sm focus:border-deal focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1" for="releaseLookupCondition">Your condition</label>
+            <select id="releaseLookupCondition"
+              class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg text-sm focus:border-deal focus:outline-none">
+              <option value="M">M (Mint)</option>
+              <option value="NM">NM (Near Mint)</option>
+              <option value="VG+" selected>VG+</option>
+              <option value="VG">VG (Very Good)</option>
+              <option value="G+">G+</option>
+              <option value="G">G</option>
+            </select>
+          </div>
+        </div>
+        <button onclick="lookupReleaseDeals()"
+          class="px-5 py-2 bg-gradient-to-r from-deal to-primary rounded-lg font-medium hover:shadow-lg hover:shadow-deal/25 transition-all flex items-center gap-2 mb-4">
+          <i data-feather="search" class="w-4 h-4"></i>
+          Find Best Buys
+        </button>
+        <div id="releaseLookupResult" class="hidden"></div>
+      </div>
+
       <!-- eBay Price Research Panel -->
       <div class="mt-8 bg-surface-light rounded-2xl p-6 border border-gray-800">
         <h2 class="text-xl font-semibold mb-1 flex items-center gap-2">
@@ -451,6 +488,34 @@
           </button>
         </div>
         <div id="dealModalContent" class="p-6">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- eBay Listing Generator Modal -->
+    <div
+      id="ebayListingModal"
+      class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4"
+    >
+      <div
+        class="bg-surface-light rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-800"
+      >
+        <div
+          class="p-6 border-b border-gray-800 flex items-center justify-between"
+        >
+          <h2 class="text-xl font-semibold flex items-center gap-2">
+            <i data-feather="file-text" class="w-5 h-5 text-deal"></i>
+            eBay Listing Generator
+          </h2>
+          <button
+            onclick="closeEbayListingModal()"
+            class="text-gray-400 hover:text-white"
+          >
+            <i data-feather="x" class="w-6 h-6"></i>
+          </button>
+        </div>
+        <div id="ebayListingModalContent" class="p-6">
           <!-- Populated by JS -->
         </div>
       </div>
