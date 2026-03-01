@@ -1193,18 +1193,6 @@ async function applyDiscogsCorrectionFromUrl(url, currentDetection = {}) {
     });
   }
 
-  // Fetch full release data to show verification in AI chat and update HTML
-  if (window.discogsService && match.release.id) {
-    window.discogsService.fetchTracklist(match.release.id).then((discogsData) => {
-      if (discogsData) {
-        window._lastFetchedDiscogsData = discogsData;
-        if (aiChat?.showDiscogsVerification) {
-          aiChat.showDiscogsVerification(discogsData, mergedDetection);
-        }
-      }
-    }).catch(() => {});
-  }
-
   showToast("Discogs correction applied and detection updated", "success");
 }
 
@@ -2499,29 +2487,6 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         } catch (err) {
           console.error("Matrix search failed:", err);
-        }
-      }
-    });
-
-    aiChat.addEventListener("all-confirmed", async () => {
-      const htmlOutput = document.getElementById("htmlOutput");
-      if (htmlOutput && htmlOutput.value) {
-        const artist = document.getElementById("artistInput")?.value.trim() || "";
-        const title = document.getElementById("titleInput")?.value.trim() || "";
-        const catNo = document.getElementById("catInput")?.value.trim() || "";
-        const year = document.getElementById("yearInput")?.value.trim() || "";
-        const cost = parseFloat(document.getElementById("costInput")?.value) || 0;
-        const goal = document.getElementById("goalSelect")?.value || "standard";
-        const market = document.getElementById("marketSelect")?.value || "uk";
-        if (artist || title) {
-          try {
-            showToast("Updating listing HTML with confirmed details...", "success");
-            await renderHTMLDescription({ artist, title, catNo, year, cost, goal, market }, null);
-            showToast("Listing HTML updated with confirmed details!", "success");
-          } catch (error) {
-            console.error("Failed to update listing HTML:", error);
-            showToast("Could not update listing HTML: " + error.message, "error");
-          }
         }
       }
     });
@@ -9210,60 +9175,6 @@ function renderFeeFloor(cost, fees, shipping, packing, safeFloor, currency) {
         </div>
     `;
 }
-function buildAboutDescription(discogsData, genreStr, pressingInfoStr) {
-  const parts = [];
-  const genre = genreStr || (discogsData?.genres?.[0]) || "Vinyl";
-  const genreCapital = genre.charAt(0).toUpperCase() + genre.slice(1);
-  const country = window.detectedCountry || discogsData?.country || "";
-  const year = window.detectedYear || discogsData?.year || "";
-  const isFirstPress = window.detectedIsFirstPress || false;
-  const pressingType = isFirstPress ? "original first pressing" : "original pressing";
-
-  let intro = `${genreCapital} release`;
-  if (year) intro += `, ${year}`;
-  if (country) intro += ` ${country}`;
-  intro += ` ${pressingType}.`;
-  parts.push(intro);
-
-  const notesText = discogsData?.notes || "";
-  const notesLower = notesText.toLowerCase();
-  const features = [];
-  if (notesLower.includes("gatefold")) features.push("Gatefold sleeve");
-  if (notesLower.includes("insert")) features.push("Original insert included");
-  if (notesLower.includes("poster")) features.push("Poster included");
-  if (notesLower.includes("hype sticker") || notesLower.includes("hype-sticker")) features.push("Hype sticker present");
-  if (notesLower.includes("inner sleeve")) features.push("Original inner sleeve");
-  if (notesLower.includes("obi")) features.push("OBI strip");
-  if (notesLower.includes("lyric sheet") || notesLower.includes("lyrics sheet")) features.push("Lyric sheet");
-  if (notesLower.includes("booklet")) features.push("Booklet included");
-  if (features.length > 0) {
-    parts.push(`Features: ${features.join(", ")}.`);
-  }
-
-  if (notesText.trim()) {
-    const cleanNotes = notesText.replace(/\[.*?\]/g, "").trim();
-    if (cleanNotes) {
-      parts.push(cleanNotes.substring(0, 300) + (cleanNotes.length > 300 ? "..." : ""));
-    }
-  }
-
-  if (pressingInfoStr) {
-    parts.push(`Matrix/Runout: ${pressingInfoStr}.`);
-  }
-
-  if (discogsData?.tracklist?.length > 0) {
-    parts.push(`Tracklist verified against Discogs entry (${discogsData.tracklist.length} tracks confirmed).`);
-  }
-  const identifiers = discogsData?.identifiers || [];
-  const barcodeInfo = identifiers.find((i) => i.type === "Barcode");
-  const matrixIds = identifiers.filter((i) => i.type === "Matrix / Runout" || i.type === "Runout");
-  if (barcodeInfo) parts.push(`Barcode: ${barcodeInfo.value}.`);
-  if (matrixIds.length > 0) {
-    parts.push(`Matrix/runout alignment: ${matrixIds.map((m) => m.value).join(" | ")}.`);
-  }
-
-  return parts.join(" ");
-}
 async function renderHTMLDescription(data, titleObj) {
   const { artist, title, catNo, year } = data;
   // Use hosted URL if available, otherwise fallback to local object URL
@@ -9300,7 +9211,6 @@ async function renderHTMLDescription(data, titleObj) {
       const discogsData = await window.discogsService.fetchTracklist(
         window.discogsReleaseId,
       );
-      window._lastFetchedDiscogsData = discogsData;
       if (discogsData && discogsData.tracklist) {
         // Build tracklist HTML
         const hasSideBreakdown = discogsData.tracklist.some(
@@ -9419,14 +9329,10 @@ async function renderHTMLDescription(data, titleObj) {
     }
   }
 
-  // If no tracklist from Discogs, provide placeholder with Discogs link
+  // If no tracklist from Discogs, provide placeholder
   if (!tracklistHtml) {
     tracklistHtml = `<p style="color: #64748b; font-style: italic;">Tracklist verification recommended. Please compare with Discogs entry for accuracy.</p>`;
   }
-  // Generate about description from fetched Discogs data or fallback
-  const aboutDescription = window._lastFetchedDiscogsData
-    ? buildAboutDescription(window._lastFetchedDiscogsData, detectedGenre, detectedPressingInfo)
-    : `${detectedGenre ? detectedGenre.charAt(0).toUpperCase() + detectedGenre.slice(1) + " release" : "Vintage vinyl release"}${detectedPressingInfo ? ". Matrix/Runout: " + detectedPressingInfo : ""}. [Add accurate description based on verified pressing details from the matched Discogs release page. Confirm Tracklist + Notes + Barcode/Other Identifier and matrix/runout alignment. Mention notable features: gatefold, insert, poster, hype sticker, etc.]`;
   const galleryHtml =
     galleryImages.length > 0
       ? `
@@ -9499,7 +9405,7 @@ async function renderHTMLDescription(data, titleObj) {
   </div>
   <!-- ABOUT -->
   <h3 style="color: #1e293b; font-size: 18px; font-weight: 600; margin-bottom: 12px;">About This Release</h3>
-  <p style="margin-bottom: 16px; color: #475569;">${aboutDescription}</p>
+  <p style="margin-bottom: 16px; color: #475569;">${detectedGenre ? `${detectedGenre.charAt(0).toUpperCase() + detectedGenre.slice(1)} release` : "Vintage vinyl release"}${detectedPressingInfo ? `. Matrix/Runout: ${detectedPressingInfo}` : ""}. [Add accurate description based on verified pressing details from the matched Discogs release page. Confirm Tracklist + Notes + Barcode/Other Identifier and matrix/runout alignment. Mention notable features: gatefold, insert, poster, hype sticker, etc.]</p>
 <!-- TRACKLIST -->
   <h3 style="color: #1e293b; font-size: 18px; font-weight: 600; margin-bottom: 12px;">Tracklist</h3>
   <div style="background: #f8fafc; padding: 16px 20px; border-radius: 8px; margin-bottom: 24px;">
