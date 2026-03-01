@@ -493,6 +493,34 @@
       </div>
     </div>
 
+    <!-- eBay Listing Generator Modal -->
+    <div
+      id="ebayListingModal"
+      class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4"
+    >
+      <div
+        class="bg-surface-light rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-800"
+      >
+        <div
+          class="p-6 border-b border-gray-800 flex items-center justify-between"
+        >
+          <h2 class="text-xl font-semibold flex items-center gap-2">
+            <i data-feather="file-text" class="w-5 h-5 text-deal"></i>
+            eBay Listing Generator
+          </h2>
+          <button
+            onclick="closeEbayListingModal()"
+            class="text-gray-400 hover:text-white"
+          >
+            <i data-feather="x" class="w-6 h-6"></i>
+          </button>
+        </div>
+        <div id="ebayListingModalContent" class="p-6">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+
     <!-- Auto-Buy Confirmation Modal -->
     <div
       id="autoBuyModal"

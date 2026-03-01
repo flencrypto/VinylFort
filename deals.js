@@ -1077,6 +1077,9 @@ function renderReleaseDealPanel(releaseId, release, suggestedPrice, lowestPrice,
   const resultEl = document.getElementById("releaseLookupResult");
   if (!resultEl) return;
 
+  // Store release data for the arbitrage/listing generator to use
+  window._lookupRelease = release;
+
   const artist = release
     ? (release.artists || []).map((a) => a.name.replace(/\s*\(\d+\)\s*$/, "")).join(", ")
     : "Unknown Artist";
@@ -1232,10 +1235,449 @@ function renderReleaseDealPanel(releaseId, release, suggestedPrice, lowestPrice,
         </div>
         <p class="text-xs text-gray-600 mt-2">Compare prices found on eBay against the Discogs suggested price to spot undervalued listings.</p>
       </div>
+
+      <!-- Arbitrage Analyser -->
+      <div class="mt-4 pt-4 border-t border-gray-800">
+        <p class="text-xs text-gray-500 uppercase mb-3 font-semibold flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Arbitrage Profit Calculator
+        </p>
+        <p class="text-xs text-gray-500 mb-3">Enter prices to calculate your potential profit buying on Discogs and selling on eBay.</p>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Discogs Buy Price (£)</label>
+            <input type="number" id="arbitrageDiscogsBuy" step="0.01" min="0"
+              value="${lowestPrice ? parseFloat(lowestPrice).toFixed(2) : ""}"
+              placeholder="${lowestPrice ? parseFloat(lowestPrice).toFixed(2) : "e.g. 8.50"}"
+              oninput="calculateArbitrageFromPanel()"
+              class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg text-sm focus:border-deal focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Discogs Shipping (£)</label>
+            <input type="number" id="arbitrageDiscogsShipping" step="0.50" min="0" value="3.00"
+              oninput="calculateArbitrageFromPanel()"
+              class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg text-sm focus:border-deal focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">eBay Avg Sold Price (£)
+              <a href="${`https://www.ebay.co.uk/sch/i.html?_nkw=${encodeURIComponent(`${artist} ${release?.title || ""} vinyl record`)}&_sacat=176985&LH_Sold=1&LH_Complete=1`}"
+                target="_blank" rel="noopener noreferrer" class="text-primary hover:underline ml-1">look up ↗</a>
+            </label>
+            <input type="number" id="arbitrageEbayAvg" step="0.01" min="0"
+              value="${suggestedPrice ? parseFloat(suggestedPrice).toFixed(2) : ""}"
+              placeholder="${suggestedPrice ? parseFloat(suggestedPrice).toFixed(2) : "e.g. 25.00"}"
+              oninput="calculateArbitrageFromPanel()"
+              class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg text-sm focus:border-deal focus:outline-none" />
+          </div>
+        </div>
+        <div id="arbitrageResult">
+          ${(lowestPrice || suggestedPrice) ? "" : '<p class="text-xs text-gray-600">Fill in the prices above to see your profit analysis.</p>'}
+        </div>
+      </div>
+    </div>`;
+
+  // Auto-run if we have both prices pre-filled
+  if (lowestPrice && suggestedPrice) {
+    calculateArbitrageFromPanel();
+  }
+}
+
+// ─── Arbitrage Profit Calculator ─────────────────────────────────────────────
+
+// eBay UK managed payments (replaced PayPal in 2021):
+// 13.15% final value fee (incl. Goods & Services portion) + 30p per transaction
+const _EBAY_FEE_RATE = 0.1315;
+const _EBAY_FIXED_FEE = 0.30;   // per-transaction charge (eBay managed payments)
+const _SELL_SHIPPING = 4.50; // Royal Mail 48 tracked LP mailer
+const _SELL_PACKING = 1.50;  // LP mailer + stiffeners
+
+/**
+ * Calculate net profit and ROI for buying on Discogs and selling on eBay.
+ */
+function calculateArbitrage(discogsBuyPrice, ebayAvgSold, discogsShipping) {
+  const shipping = typeof discogsShipping === "number" ? discogsShipping : 3.00;
+  const totalBuyCost = discogsBuyPrice + shipping;
+  const ebayFee = ebayAvgSold * _EBAY_FEE_RATE + _EBAY_FIXED_FEE;
+  const totalSellFees = ebayFee + _SELL_SHIPPING + _SELL_PACKING;
+  const netProfit = ebayAvgSold - totalBuyCost - totalSellFees;
+  const roi = totalBuyCost > 0 ? (netProfit / totalBuyCost) * 100 : 0;
+
+  return {
+    discogsBuyPrice,
+    discogsShipping: shipping,
+    totalBuyCost: Math.round(totalBuyCost * 100) / 100,
+    ebayAvgSold,
+    ebayFee: Math.round(ebayFee * 100) / 100,
+    sellShipping: _SELL_SHIPPING,
+    packingCost: _SELL_PACKING,
+    totalSellFees: Math.round(totalSellFees * 100) / 100,
+    netProfit: Math.round(netProfit * 100) / 100,
+    roi: parseFloat(roi.toFixed(1)),
+    isHot: netProfit >= 8 && roi >= 50,
+    isViable: netProfit >= 3 && roi >= 20,
+  };
+}
+
+/**
+ * Read arbitrage inputs from the panel and render results inline.
+ */
+function calculateArbitrageFromPanel() {
+  const discogsBuyInput = parseFloat(document.getElementById("arbitrageDiscogsBuy")?.value) || 0;
+  const ebayAvgInput = parseFloat(document.getElementById("arbitrageEbayAvg")?.value) || 0;
+  const discogsShipping = parseFloat(document.getElementById("arbitrageDiscogsShipping")?.value) || 3.00;
+  const resultEl = document.getElementById("arbitrageResult");
+  if (!resultEl) return;
+
+  if (discogsBuyInput <= 0 || ebayAvgInput <= 0) {
+    resultEl.innerHTML = `<p class="text-xs text-gray-600">Fill in both prices above to see the profit analysis.</p>`;
+    return;
+  }
+
+  const arb = calculateArbitrage(discogsBuyInput, ebayAvgInput, discogsShipping);
+
+  let badgeHtml, borderClass;
+  if (arb.isHot) {
+    badgeHtml = `<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-profit text-white text-sm font-bold">🔥 HIGH RETURN — STRONG BUY</span>`;
+    borderClass = "border-profit bg-profit/5";
+  } else if (arb.isViable) {
+    badgeHtml = `<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-deal/20 text-deal text-sm font-bold">✓ VIABLE FLIP</span>`;
+    borderClass = "border-deal/40 bg-deal/5";
+  } else {
+    badgeHtml = `<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-700 text-gray-400 text-sm font-bold">✗ LOW MARGIN — PASS</span>`;
+    borderClass = "border-gray-700";
+  }
+
+  resultEl.innerHTML = `
+    <div class="p-4 rounded-xl border ${borderClass} space-y-3">
+      <div class="flex items-center justify-between gap-3">
+        ${badgeHtml}
+        <div class="text-right shrink-0">
+          <p class="text-2xl font-bold ${arb.netProfit >= 0 ? "text-profit" : "text-loss"}">£${arb.netProfit.toFixed(2)}</p>
+          <p class="text-xs text-gray-500">net profit</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+        <div class="p-2 bg-surface rounded-lg">
+          <p class="text-xs text-gray-500 mb-0.5">Buy (Discogs)</p>
+          <p class="font-bold text-gray-200">£${arb.discogsBuyPrice.toFixed(2)}</p>
+        </div>
+        <div class="p-2 bg-surface rounded-lg">
+          <p class="text-xs text-gray-500 mb-0.5">Total Buy Cost</p>
+          <p class="font-bold text-gray-200">£${arb.totalBuyCost.toFixed(2)}</p>
+        </div>
+        <div class="p-2 bg-surface rounded-lg">
+          <p class="text-xs text-gray-500 mb-0.5">eBay Avg Sold</p>
+          <p class="font-bold text-gray-200">£${arb.ebayAvgSold.toFixed(2)}</p>
+        </div>
+        <div class="p-2 bg-surface rounded-lg">
+          <p class="text-xs text-gray-500 mb-0.5">ROI</p>
+          <p class="font-bold ${arb.roi >= 30 ? "text-profit" : arb.roi >= 0 ? "text-yellow-400" : "text-loss"}">${arb.roi}%</p>
+        </div>
+      </div>
+      <div class="text-xs text-gray-600 flex flex-wrap gap-x-4 gap-y-1">
+        <span>eBay fee: £${arb.ebayFee.toFixed(2)}</span>
+        <span>Sell shipping: £${arb.sellShipping.toFixed(2)}</span>
+        <span>Packing: £${arb.packingCost.toFixed(2)}</span>
+      </div>
+      ${arb.isViable ? `
+      <div class="pt-3 border-t border-gray-800">
+        <button onclick="openEbayListingModal()"
+          class="px-4 py-2 bg-gradient-to-r from-deal to-primary rounded-lg text-sm font-medium hover:shadow-lg hover:shadow-deal/25 transition-all flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Generate eBay Listing
+        </button>
+        <p class="text-xs text-gray-600 mt-1">Creates a pre-filled eBay description using Discogs release data.</p>
+      </div>` : ""}
     </div>`;
 }
 
-// showToast helper if not already defined
+// ─── eBay Listing Generator ───────────────────────────────────────────────────
+
+/**
+ * Build a self-contained HTML description for an eBay listing using
+ * Discogs release data. Does not require photos (seller uploads separately).
+ */
+function buildEbayListingHtmlFromRelease(release, condition) {
+  const artist = release
+    ? (release.artists || []).map((a) => a.name.replace(/\s*\(\d+\)\s*$/, "")).join(", ")
+    : "Unknown Artist";
+  const title = release?.title || "Unknown Title";
+  const year = release?.year || "";
+  const country = release?.country || "UK";
+  const labels = (release?.labels || [])
+    .map((l) => `${l.name}${l.catno ? ` (${l.catno})` : ""}`)
+    .join(", ");
+  const formats = (release?.formats || [])
+    .map((f) => f.name + (f.descriptions ? ` · ${f.descriptions.join(", ")}` : ""))
+    .join("; ");
+  const styles = [...(release?.genres || []), ...(release?.styles || [])].join(", ");
+
+  const conditionLabels = {
+    M: "Mint (M)", NM: "Near Mint (NM or M-)", "VG+": "Very Good Plus (VG+)",
+    VG: "Very Good (VG)", "G+": "Good Plus (G+)", G: "Good (G)",
+    F: "Fair (F)", P: "Poor (P)",
+  };
+  const conditionLabel = conditionLabels[condition] || condition || "Not Specified";
+
+  // Tracklist
+  let tracklistHtml = "";
+  if (release?.tracklist && release.tracklist.length > 0) {
+    const hasSides = release.tracklist.some((t) => t.position && /^[A-Z]/.test(t.position));
+    if (hasSides) {
+      const sides = {};
+      release.tracklist.forEach((t) => {
+        const side = t.position ? t.position.charAt(0) : "?";
+        if (!sides[side]) sides[side] = [];
+        sides[side].push(t);
+      });
+      tracklistHtml = Object.entries(sides).map(([side, tracks]) => `
+        <div style="margin-bottom:12px">
+          <h4 style="margin:0 0 8px;color:#7c3aed;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Side ${side}</h4>
+          ${tracks.map((t) => `
+            <div style="display:flex;justify-content:space-between;padding:6px 10px;background:#f8fafc;border-radius:4px;margin-bottom:4px;font-size:13px">
+              <span><strong style="color:#4b5563">${t.position}</strong> ${t.title}</span>
+              ${t.duration ? `<span style="color:#9ca3af;font-family:monospace">${t.duration}</span>` : ""}
+            </div>`).join("")}
+        </div>`).join("");
+    } else {
+      tracklistHtml = release.tracklist.map((t) => `
+        <div style="display:flex;justify-content:space-between;padding:6px 10px;background:#f8fafc;border-radius:4px;margin-bottom:4px;font-size:13px">
+          <span>${t.position ? `<strong style="color:#4b5563">${t.position}</strong> ` : ""}${t.title}</span>
+          ${t.duration ? `<span style="color:#9ca3af;font-family:monospace">${t.duration}</span>` : ""}
+        </div>`).join("");
+    }
+  }
+
+  // Pressing / matrix identifiers
+  const identifiers = release?.identifiers || [];
+  const barcode = identifiers.find((i) => i.type === "Barcode");
+  const matrixEntries = identifiers.filter(
+    (i) => i.type === "Matrix / Runout" || i.type === "Runout",
+  );
+  let pressingHtml = "";
+  if (barcode || matrixEntries.length > 0) {
+    pressingHtml = `
+      <div style="background:#f0fdf4;border-left:4px solid #22c55e;padding:14px 18px;margin:20px 0;border-radius:0 8px 8px 0">
+        <h3 style="margin:0 0 10px;color:#166534;font-size:14px;font-weight:700">Pressing &amp; Matrix Information</h3>
+        <div style="font-family:monospace;font-size:12px;color:#15803d;line-height:1.7">
+          ${barcode ? `<div><strong>Barcode:</strong> ${barcode.value}</div>` : ""}
+          ${matrixEntries.map((m) => `<div><strong>${m.type}:</strong> ${m.value}${m.description ? ` (${m.description})` : ""}</div>`).join("")}
+        </div>
+      </div>`;
+  }
+
+  // Provenance — companies (mastering, pressing)
+  const companies = release?.companies || [];
+  const masteredBy = companies.find((c) =>
+    c.entity_type_name === "Mastered At" || c.name?.toLowerCase().includes("mastering"),
+  );
+  const pressedBy = companies.find((c) =>
+    c.entity_type_name === "Pressed By" || c.name?.toLowerCase().includes("pressing"),
+  );
+  let provenanceHtml = "";
+  if (masteredBy || pressedBy) {
+    provenanceHtml = `
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;padding:14px 18px;margin:20px 0;border-radius:8px">
+        <h3 style="margin:0 0 10px;color:#1e40af;font-size:14px;font-weight:700">Provenance</h3>
+        <div style="font-size:13px;color:#1e3a8a;line-height:1.7">
+          ${masteredBy ? `<div>✓ Mastered at <strong>${masteredBy.name}</strong></div>` : ""}
+          ${pressedBy ? `<div>✓ Pressed at <strong>${pressedBy.name}</strong></div>` : ""}
+        </div>
+      </div>`;
+  }
+
+  // Release notes (truncated)
+  const notesHtml = release?.notes
+    ? `<div style="background:#fffbeb;border-left:4px solid #f59e0b;padding:14px 18px;margin:20px 0;border-radius:0 8px 8px 0">
+        <h3 style="margin:0 0 8px;color:#92400e;font-size:14px;font-weight:700">Release Notes</h3>
+        <p style="margin:0;color:#78350f;font-size:13px;line-height:1.6">${release.notes.substring(0, 500)}${release.notes.length > 500 ? "…" : ""}</p>
+       </div>`
+    : "";
+
+  const discogsUrl = release?.uri || "";
+
+  return `<div style="max-width:800px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1e293b;line-height:1.6">
+
+<!-- BADGES -->
+<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:24px">
+  <span style="background:#7c3aed;color:#fff;padding:6px 16px;border-radius:20px;font-size:12px;font-weight:700;text-transform:uppercase">${country} Pressing</span>
+  ${year ? `<span style="background:#059669;color:#fff;padding:6px 16px;border-radius:20px;font-size:12px;font-weight:700;text-transform:uppercase">${year}</span>` : ""}
+  ${formats ? `<span style="background:#0891b2;color:#fff;padding:6px 16px;border-radius:20px;font-size:12px;font-weight:700;text-transform:uppercase">${formats}</span>` : ""}
+  <span style="background:#d97706;color:#fff;padding:6px 16px;border-radius:20px;font-size:12px;font-weight:700;text-transform:uppercase">${conditionLabel}</span>
+</div>
+
+<!-- AT A GLANCE TABLE -->
+<table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:14px">
+  <tr style="background:#f8fafc"><td style="padding:10px 14px;border:1px solid #e2e8f0;font-weight:700;width:130px">Artist</td><td style="padding:10px 14px;border:1px solid #e2e8f0">${artist}</td></tr>
+  <tr><td style="padding:10px 14px;border:1px solid #e2e8f0;font-weight:700">Title</td><td style="padding:10px 14px;border:1px solid #e2e8f0">${title}</td></tr>
+  <tr style="background:#f8fafc"><td style="padding:10px 14px;border:1px solid #e2e8f0;font-weight:700">Label</td><td style="padding:10px 14px;border:1px solid #e2e8f0">${labels || "[See record label]"}</td></tr>
+  <tr><td style="padding:10px 14px;border:1px solid #e2e8f0;font-weight:700">Year</td><td style="padding:10px 14px;border:1px solid #e2e8f0">${year || "[Verify]"}</td></tr>
+  <tr style="background:#f8fafc"><td style="padding:10px 14px;border:1px solid #e2e8f0;font-weight:700">Country</td><td style="padding:10px 14px;border:1px solid #e2e8f0">${country}</td></tr>
+  <tr><td style="padding:10px 14px;border:1px solid #e2e8f0;font-weight:700">Genre / Style</td><td style="padding:10px 14px;border:1px solid #e2e8f0">${styles || "[See Discogs]"}</td></tr>
+  <tr style="background:#f8fafc"><td style="padding:10px 14px;border:1px solid #e2e8f0;font-weight:700">Condition</td><td style="padding:10px 14px;border:1px solid #e2e8f0"><strong>${conditionLabel}</strong></td></tr>
+</table>
+
+<!-- CONDITION REPORT -->
+<div style="background:#fefce8;border-left:4px solid #eab308;padding:14px 18px;margin-bottom:20px;border-radius:0 8px 8px 0">
+  <h3 style="margin:0 0 10px;color:#854d0e;font-size:15px;font-weight:700">Condition Report</h3>
+  <p style="margin:0 0 8px;color:#713f12"><strong>Vinyl:</strong> ${conditionLabel} — [Add your notes: surface marks, play quality, quiet pressing, etc.]</p>
+  <p style="margin:0 0 8px;color:#713f12"><strong>Sleeve:</strong> [Grade / notes — splits, ring wear, writing, stickers, etc.]</p>
+  <p style="margin:0;color:#713f12"><strong>Inner sleeve / extras:</strong> [Note original inner, inserts, lyric sheet, poster, OBI strip, etc.]</p>
+</div>
+
+${tracklistHtml ? `<!-- TRACKLIST -->
+<h3 style="color:#1e293b;font-size:17px;font-weight:700;margin:0 0 12px">Tracklist</h3>
+<div style="background:#f8fafc;padding:14px 18px;border-radius:8px;margin-bottom:20px">${tracklistHtml}</div>` : ""}
+
+${pressingHtml}
+${provenanceHtml}
+${notesHtml}
+
+<!-- PACKING & POSTAGE -->
+<div style="background:#eff6ff;border-left:4px solid #3b82f6;padding:14px 18px;margin-bottom:20px;border-radius:0 8px 8px 0">
+  <h3 style="margin:0 0 10px;color:#1e40af;font-size:15px;font-weight:700">Packing &amp; Postage</h3>
+  <p style="margin:0 0 8px;color:#1e3a8a">Records are removed from outer sleeves for transit. Packed with card stiffeners in a dedicated LP mailer. Royal Mail 48 Tracked (or equivalent courier).</p>
+  <p style="margin:0;color:#1e3a8a;font-size:13px"><strong>Combined postage:</strong> Discount available for multiple purchases — please request invoice before paying.</p>
+</div>
+
+${discogsUrl ? `<p style="font-size:12px;color:#64748b;margin-bottom:20px">Discogs reference: <a href="${discogsUrl}" style="color:#8b5cf6">${discogsUrl}</a></p>` : ""}
+
+<!-- CTA -->
+<div style="text-align:center;padding:20px;background:#f1f5f9;border-radius:10px">
+  <p style="margin:0 0 6px;color:#475569;font-weight:600">Questions? Need more photos?</p>
+  <p style="margin:0;color:#64748b;font-size:13px">Message me anytime — happy to provide additional angles or pressing details.</p>
+</div>
+
+</div>`;
+}
+
+/**
+ * Open the eBay Listing Generator modal for the currently looked-up release.
+ */
+function openEbayListingModal() {
+  const release = window._lookupRelease;
+  const condition = document.getElementById("releaseLookupCondition")?.value || "VG+";
+  const ebayTargetPrice = parseFloat(document.getElementById("arbitrageEbayAvg")?.value) || 0;
+
+  const artist = release
+    ? (release.artists || []).map((a) => a.name.replace(/\s*\(\d+\)\s*$/, "")).join(", ")
+    : "Unknown Artist";
+  const title = release?.title || "Unknown Title";
+  const year = release?.year || "";
+  const fmtNames = (release?.formats || []).map((f) => f.name).join(", ") || "LP";
+  const rawTitle = `${artist} - ${title}${year ? ` (${year})` : ""} - ${fmtNames} - Vinyl - ${condition}`;
+  // Truncate at a word boundary so the title doesn't cut mid-word
+  const ebayTitle = rawTitle.length <= 80
+    ? rawTitle
+    : rawTitle.substring(0, 80).replace(/\s+\S*$/, "");
+
+  const listingHtml = buildEbayListingHtmlFromRelease(release, condition);
+  const ebayListUrl = "https://www.ebay.co.uk/sell/create/listing?cat=176985";
+
+  const modal = document.getElementById("ebayListingModal");
+  const content = document.getElementById("ebayListingModalContent");
+  if (!modal || !content) return;
+
+  const escapedTitle = ebayTitle.replace(/"/g, "&quot;");
+  const escapedHtml = listingHtml
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  content.innerHTML = `
+    <div class="space-y-4">
+      <!-- Title -->
+      <div>
+        <label class="block text-xs text-gray-500 uppercase mb-1 font-semibold">eBay Listing Title (max 80 chars)</label>
+        <div class="flex gap-2">
+          <input type="text" id="ebayListingTitle" value="${escapedTitle}" maxlength="80"
+            class="flex-1 px-3 py-2 bg-surface border border-gray-700 rounded-lg text-sm font-mono focus:border-deal focus:outline-none" />
+          <button onclick="navigator.clipboard.writeText(document.getElementById('ebayListingTitle').value).then(()=>showToast('Title copied!','success'))"
+            class="px-3 py-2 border border-gray-600 rounded-lg text-xs text-gray-400 hover:border-deal hover:text-deal transition-all shrink-0">
+            Copy
+          </button>
+        </div>
+        <p class="text-xs text-gray-600 mt-1" id="ebayTitleCharCount">${ebayTitle.length}/80 characters</p>
+      </div>
+
+      <!-- Pricing guide -->
+      ${ebayTargetPrice > 0 ? `
+      <div class="p-3 bg-deal/10 border border-deal/30 rounded-lg text-sm">
+        <p class="font-semibold text-deal mb-1">Suggested Listing Price</p>
+        <p class="text-gray-300">£${ebayTargetPrice.toFixed(2)} <span class="text-gray-500">(eBay avg sold you entered)</span></p>
+        <p class="text-xs text-gray-500 mt-1">Consider listing 5–10% above to allow best-offer negotiation.</p>
+      </div>` : ""}
+
+      <!-- HTML description -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-xs text-gray-500 uppercase font-semibold">eBay Description (HTML — paste into eBay HTML editor)</label>
+          <button onclick="copyListingHtml()"
+            class="px-3 py-1.5 bg-deal/20 border border-deal/40 text-deal rounded text-xs font-medium hover:bg-deal/30 transition-all flex items-center gap-1 shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy HTML
+          </button>
+        </div>
+        <textarea id="ebayListingHtmlOutput" rows="10" readonly
+          class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg text-xs font-mono text-gray-400 resize-y focus:outline-none"
+          >${escapedHtml}</textarea>
+        <p class="text-xs text-gray-600 mt-1">
+          In eBay listing creation: scroll to Description → switch to HTML view → paste. Upload photos separately.
+        </p>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex flex-wrap gap-2 pt-2 border-t border-gray-800">
+        <a href="${ebayListUrl}" target="_blank" rel="noopener noreferrer"
+          class="px-4 py-2 bg-red-600/20 border border-red-500/40 text-red-400 rounded-lg text-sm font-medium hover:bg-red-600/30 transition-all flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Open eBay Sell Page
+        </a>
+        <button onclick="closeEbayListingModal()"
+          class="px-4 py-2 border border-gray-600 rounded-lg text-gray-400 text-sm hover:border-gray-500 hover:text-white transition-all">
+          Close
+        </button>
+      </div>
+    </div>`;
+
+  // Store raw HTML for clipboard
+  window._ebayListingHtml = listingHtml;
+
+  // Live character counter for title
+  const titleInput = content.querySelector("#ebayListingTitle");
+  const charCount = content.querySelector("#ebayTitleCharCount");
+  if (titleInput && charCount) {
+    titleInput.addEventListener("input", () => {
+      charCount.textContent = `${titleInput.value.length}/80 characters`;
+    });
+  }
+
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+}
+
+function copyListingHtml() {
+  if (window._ebayListingHtml) {
+    navigator.clipboard.writeText(window._ebayListingHtml).then(() => {
+      showToast("HTML description copied to clipboard!", "success");
+    }).catch(() => {
+      // Fallback: select the textarea so the user can manually copy with Ctrl+C
+      const ta = document.getElementById("ebayListingHtmlOutput");
+      if (ta) {
+        ta.select();
+        ta.setSelectionRange(0, ta.value.length);
+      }
+      showToast("Press Ctrl+C (or Cmd+C) to copy the selected HTML", "warning");
+    });
+  }
+}
+
+function closeEbayListingModal() {
+  const modal = document.getElementById("ebayListingModal");
+  if (!modal) return;
+  modal.classList.add("hidden");
+  modal.classList.remove("flex");
+}
 if (typeof showToast !== "function") {
   function showToast(message, type = "success") {
     const existing = document.querySelector(".toast");
