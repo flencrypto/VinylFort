@@ -2562,13 +2562,18 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     updateBtn.addEventListener("click", async () => {
-      updateBtn.classList.add("hidden");
+      if (updateBtn.disabled) return;
+      updateBtn.disabled = true;
+      updateBtn.classList.add("opacity-50", "cursor-not-allowed");
       showToast("Reconfiguring titles, pricing, and preview…", "success");
       try {
         await draftAnalysis();
       } catch (e) {
         console.error("Update Record Details failed:", e);
         showToast("Update failed: " + e.message, "error");
+      } finally {
+        updateBtn.disabled = false;
+        updateBtn.classList.remove("opacity-50", "cursor-not-allowed");
       }
     });
   }
@@ -9566,7 +9571,7 @@ async function renderHTMLDescription(data, titleObj) {
   ${userNotes ? `<!-- SELLER NOTES -->
   <div style="background: #f0fdf4; border-left: 4px solid #22c55e; padding: 16px 20px; margin-bottom: 24px; border-radius: 0 8px 8px 0;">
     <h3 style="margin: 0 0 10px 0; color: #166534; font-size: 16px; font-weight: 600;">Seller's Notes</h3>
-    <p style="margin: 0; color: #15803d; font-size: 14px; line-height: 1.6;">${userNotes}</p>
+    <p style="margin: 0; color: #15803d; font-size: 14px; line-height: 1.6;">${escapeForHtml(userNotes).replace(/\n/g, "<br>")}</p>
   </div>
 ` : ""}
     <!-- CTA -->
@@ -9881,7 +9886,7 @@ async function draftAnalysis() {
                     ? `
                     <div class="p-3 bg-primary/10 border border-primary/20 rounded-lg mt-2">
                         <p class="text-xs text-primary font-medium mb-1">Your notes (included in listing):</p>
-                        <p class="text-xs text-gray-400">${userNotes.substring(0, 200)}${userNotes.length > 200 ? "\u2026" : ""}</p>
+                        <p class="text-xs text-gray-400">${escapeForHtml(userNotes.substring(0, 200))}${userNotes.length > 200 ? "\u2026" : ""}</p>
                     </div>
                 `
                     : ""
