@@ -1762,3 +1762,683 @@ function openEbaySoldSearch() {
     "noopener,noreferrer",
   );
 }
+
+// ─── ValueYourMusic Sold Price Research ──────────────────────────────────────
+
+/** Map VinylFort condition codes to ValueYourMusic URL condition slugs. */
+const VYM_CONDITION_MAP = {
+  M: "mint",
+  NM: "near-mint",
+  "VG+": "very-good-plus",
+  VG: "very-good",
+  "G+": "good-plus",
+  G: "good",
+};
+
+/**
+ * Build a ValueYourMusic sold-listings URL from the supplied record details.
+ * Mirrors the example: artist + title as the primary term, followed by
+ * matrix A and B as comma-separated additions, sorted by most-recent sale.
+ *
+ * @param {string} artist
+ * @param {string} title
+ * @param {string} [matrixA]
+ * @param {string} [matrixB]
+ * @param {string} [condition="VG"]
+ * @returns {string}
+ */
+function buildValueYourMusicUrl(artist, title, matrixA, matrixB, condition = "VG") {
+  if (!artist || !title) {
+    throw new Error("artist and title are required to build a ValueYourMusic URL");
+  }
+  const slug = VYM_CONDITION_MAP[condition] || "very-good";
+  const parts = [`${artist} ${title}`, matrixA, matrixB].filter(Boolean);
+  const q = encodeURIComponent(parts.join(", "));
+  return `https://www.valueyourmusic.com/vinyl?condition=${slug}&q=${q}&sort=date_end_desc&utf8=%E2%9C%93`;
+}
+
+/**
+ * Calculate low, median, and high from an array of numeric prices.
+ *
+ * @param {number[]} prices
+ * @returns {{ low: number, median: number, high: number, count: number } | null}
+ */
+function calculateSoldPriceStats(prices) {
+  if (!prices || prices.length === 0) return null;
+  const sorted = [...prices].sort((a, b) => a - b);
+  const n = sorted.length;
+  const median =
+    n % 2 === 1
+      ? sorted[Math.floor(n / 2)]
+      : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
+  return {
+    low: sorted[0],
+    median: Math.round(median * 100) / 100,
+    high: sorted[n - 1],
+    count: n,
+  };
+}
+
+/**
+ * Parse a user-entered string of sold prices (comma or space separated)
+ * into an array of numbers. Strips currency symbols.
+ *
+ * @param {string} raw
+ * @returns {number[]}
+ */
+function parseSoldPricesFromInput(raw) {
+  return (raw || "")
+    .split(/[,\s]+/)
+    .map((s) => parseFloat(s.replace(/[£$€]/g, "").trim()))
+    .filter((n) => !isNaN(n) && n > 0);
+}
+
+/** Trigger the ValueYourMusic panel search. */
+function lookupVymPrices() {
+  const artist = document.getElementById("vymArtist")?.value.trim() || "";
+  const title = document.getElementById("vymTitle")?.value.trim() || "";
+  const matrixA = document.getElementById("vymMatrixA")?.value.trim() || "";
+  const matrixB = document.getElementById("vymMatrixB")?.value.trim() || "";
+  const condition = document.getElementById("vymCondition")?.value || "VG";
+
+  if (!artist || !title) {
+    showToast("Enter at least artist and title to build the search URL", "warning");
+    document.getElementById("vymArtist")?.focus();
+    return;
+  }
+
+  const url = buildValueYourMusicUrl(artist, title, matrixA, matrixB, condition);
+
+  // Display generated URL so the user can see it
+  const urlEl = document.getElementById("vymGeneratedUrl");
+  if (urlEl) {
+    urlEl.value = url;
+    urlEl.classList.remove("hidden");
+  }
+  const urlRow = document.getElementById("vymUrlRow");
+  if (urlRow) urlRow.classList.remove("hidden");
+
+  // Open in new tab
+  window.open(url, "_blank", "noopener,noreferrer");
+  showToast("Opening ValueYourMusic sold listings in a new tab…", "success");
+}
+
+/** Recalculate stats whenever the user updates the sold-price input. */
+function recalculateVymStats() {
+  const raw = document.getElementById("vymPricesInput")?.value || "";
+  const resultEl = document.getElementById("vymStatsResult");
+  if (!resultEl) return;
+
+  const prices = parseSoldPricesFromInput(raw);
+  const stats = calculateSoldPriceStats(prices);
+
+  if (!stats) {
+    resultEl.innerHTML = `<p class="text-xs text-gray-600">Enter sold prices (comma-separated) to see low / median / high.</p>`;
+    return;
+  }
+
+  const currency = "£";
+  resultEl.innerHTML = `
+    <div class="grid grid-cols-3 gap-3 mt-2">
+      <div class="p-3 bg-surface rounded-lg text-center">
+        <p class="text-xs text-gray-500 mb-1">Low (${stats.count} sales)</p>
+        <p class="text-xl font-bold text-loss">${currency}${stats.low.toFixed(2)}</p>
+      </div>
+      <div class="p-3 bg-surface rounded-lg text-center border border-deal/40">
+        <p class="text-xs text-gray-500 mb-1">Median</p>
+        <p class="text-xl font-bold text-deal">${currency}${stats.median.toFixed(2)}</p>
+        <p class="text-xs text-gray-600">Use as target price</p>
+      </div>
+      <div class="p-3 bg-surface rounded-lg text-center">
+        <p class="text-xs text-gray-500 mb-1">High</p>
+        <p class="text-xl font-bold text-profit">${currency}${stats.high.toFixed(2)}</p>
+      </div>
+    </div>
+    <p class="text-xs text-gray-600 mt-2">
+      Tip: Use the <strong>median</strong> as your suggested listing price and the <strong>low</strong> as your floor.
+      Feed the median into the Arbitrage Calculator above.
+    </p>`;
+  if (typeof feather !== "undefined") feather.replace();
+}
+
+// ─── eBay Login / Flip Popup ──────────────────────────────────────────────────
+
+/** Copy the generated ValueYourMusic URL to the clipboard. */
+function copyVymUrl() {
+  const el = document.getElementById("vymGeneratedUrl");
+  if (!el || !el.value) return;
+  navigator.clipboard.writeText(el.value).then(
+    () => showToast("URL copied!", "success"),
+    () => {
+      el.select();
+      showToast("Press Ctrl+C to copy the URL", "warning");
+    },
+  );
+}
+
+/**
+ * Open the eBay sign-in page in a popup window so the user can authenticate
+ * without leaving the Deal Finder page.
+ */
+function openEbayLoginPopup() {
+  const popup = window.open(
+    "https://signin.ebay.co.uk/signin",
+    "ebay_login",
+    "width=520,height=680,scrollbars=yes,resizable=yes,toolbar=no,menubar=no",
+  );
+  if (!popup || popup.closed) {
+    showToast(
+      "Pop-up blocked — please allow pop-ups for this site and try again.",
+      "warning",
+    );
+    return;
+  }
+  showToast("eBay sign-in opened in popup — log in to browse your flips.", "success");
+}
+
+/**
+ * Open a targeted eBay search for underpriced vinyl in a popup window so the
+ * user can browse potential flips while staying on the Deal Finder page.
+ *
+ * @param {"sold"|"live"} [mode="live"]
+ */
+function openEbayFlipBrowser(mode) {
+  const artist = document.getElementById("vymArtist")?.value.trim()
+    || document.getElementById("ebaySearchArtist")?.value.trim()
+    || "";
+  const title = document.getElementById("vymTitle")?.value.trim()
+    || document.getElementById("ebaySearchTitle")?.value.trim()
+    || "";
+  const q = encodeURIComponent([artist, title, "vinyl"].filter(Boolean).join(" "));
+
+  let url;
+  if (mode === "sold") {
+    url = `https://www.ebay.co.uk/sch/i.html?_nkw=${q}&_sacat=176985&LH_Sold=1&LH_Complete=1`;
+  } else {
+    url = `https://www.ebay.co.uk/sch/i.html?_nkw=${q}&_sacat=176985&LH_ItemCondition=3000&_sop=15`;
+  }
+
+  const popup = window.open(
+    url,
+    "ebay_flip",
+    "width=1100,height=800,scrollbars=yes,resizable=yes,toolbar=yes,menubar=no",
+  );
+  if (!popup || popup.closed) {
+    // Fall back to a standard new tab
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}
+
+// ─── Deal Finder AI Assistant ─────────────────────────────────────────────────
+
+/** Conversation state for the Deal Finder AI assistant. */
+const _dfState = {
+  messages: [],       // { role: "user"|"assistant", content: string }[]
+  confirmedRelease: null,  // Discogs release object after user confirms
+  pendingCandidates: [],   // Discogs search candidates awaiting selection
+};
+
+/**
+ * Render a new message bubble into the Deal Finder AI chat.
+ *
+ * @param {"user"|"assistant"} role
+ * @param {string} html  – sanitised HTML string to inject
+ */
+function _dfAppendMessage(role, html) {
+  const area = document.getElementById("dfChatArea");
+  if (!area) return;
+  const div = document.createElement("div");
+  div.className = role === "user"
+    ? "df-msg-user flex justify-end mb-3"
+    : "df-msg-ai flex justify-start mb-3";
+  div.innerHTML = role === "user"
+    ? `<div class="max-w-xs px-4 py-2 rounded-2xl rounded-tr-sm bg-deal/20 border border-deal/40 text-sm text-gray-200">${html}</div>`
+    : `<div class="max-w-sm px-4 py-2 rounded-2xl rounded-tl-sm bg-surface border border-gray-700 text-sm text-gray-200">${html}</div>`;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+}
+
+/** Show a typing indicator in the AI chat. */
+function _dfShowTyping() {
+  const area = document.getElementById("dfChatArea");
+  if (!area || area.querySelector("#dfTyping")) return;
+  const el = document.createElement("div");
+  el.id = "dfTyping";
+  el.className = "flex justify-start mb-3";
+  el.innerHTML = `<div class="px-4 py-2 rounded-2xl rounded-tl-sm bg-surface border border-gray-700 text-sm text-gray-500 flex items-center gap-2">
+    <span class="inline-block w-2 h-2 bg-gray-500 rounded-full animate-bounce" style="animation-delay:0s"></span>
+    <span class="inline-block w-2 h-2 bg-gray-500 rounded-full animate-bounce" style="animation-delay:.15s"></span>
+    <span class="inline-block w-2 h-2 bg-gray-500 rounded-full animate-bounce" style="animation-delay:.3s"></span>
+  </div>`;
+  area.appendChild(el);
+  area.scrollTop = area.scrollHeight;
+}
+
+function _dfHideTyping() {
+  document.getElementById("dfTyping")?.remove();
+}
+
+/**
+ * Escape a string for use in HTML content.
+ *
+ * @param {string} str
+ * @returns {string}
+ */
+function _dfEscape(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/**
+ * Initialise (or reset) the Deal Finder AI assistant, showing the greeting.
+ */
+function initDealFinderAssistant() {
+  _dfState.messages = [];
+  _dfState.confirmedRelease = null;
+  _dfState.pendingCandidates = [];
+
+  const area = document.getElementById("dfChatArea");
+  if (area) {
+    area.innerHTML = "";
+    _dfAppendMessage("assistant",
+      "👋 <strong>Hi! I'm your Deal Finder assistant.</strong><br><br>" +
+      "Tell me about a record you're interested in — paste a <strong>Discogs URL</strong>, " +
+      "an <strong>eBay listing link</strong>, or just describe it:<br>" +
+      "<em>artist, title, edition, matrix numbers, condition…</em><br><br>" +
+      "I'll search Discogs to narrow it down and run an arbitrage analysis for you.",
+    );
+  }
+  const input = document.getElementById("dfUserInput");
+  if (input) {
+    input.value = "";
+    input.focus();
+  }
+}
+
+/**
+ * Called when the user submits a message to the Deal Finder AI assistant.
+ */
+async function sendDealFinderMessage() {
+  const input = document.getElementById("dfUserInput");
+  const text = input?.value.trim();
+  if (!text) return;
+
+  input.value = "";
+  _dfAppendMessage("user", _dfEscape(text));
+  _dfState.messages.push({ role: "user", content: text });
+
+  // Route the message
+  await _dfProcessMessage(text);
+}
+
+/** Handle Enter key in the Deal Finder input. */
+function dfInputKeydown(event) {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    sendDealFinderMessage();
+  }
+}
+
+/**
+ * Core routing / processing for incoming user messages.
+ */
+async function _dfProcessMessage(text) {
+  // 1. If user is responding to a candidate list (pick a number)
+  if (_dfState.pendingCandidates.length > 0) {
+    const num = parseInt(text.trim(), 10);
+    if (!isNaN(num) && num >= 1 && num <= _dfState.pendingCandidates.length) {
+      const chosen = _dfState.pendingCandidates[num - 1];
+      _dfState.pendingCandidates = [];
+      await _dfShowReleaseConfirm(chosen.id);
+      return;
+    }
+    // User typed something other than a number — re-search with new text
+    _dfState.pendingCandidates = [];
+  }
+
+  // 2. Handle "yes/confirm" response to a release confirmation
+  if (/^(yes|confirm|that'?s\s+(it|the\s+one)|correct|right|yep|yeah)\b/i.test(text)) {
+    if (_dfState.confirmedRelease) {
+      await _dfRunArbitrage(_dfState.confirmedRelease);
+      return;
+    }
+  }
+
+  // 3. Handle "no/wrong/next" — re-search if we had candidates
+  if (/^(no|wrong|not\s+this|different|next|skip)\b/i.test(text)) {
+    _dfAppendMessage("assistant",
+      "OK, let me try a different search. Could you give me more details — " +
+      "e.g. label, catalogue number, pressing country, or matrix numbers?",
+    );
+    return;
+  }
+
+  // 4. Check for a Discogs URL
+  const discogsUrlMatch = text.match(/discogs\.com\/(?:release\/|.*-release-)(\d+)/i)
+    || text.match(/discogs\.com\/[^/]+\/[^/]+-(\d+)$/i);
+  if (discogsUrlMatch) {
+    const releaseId = parseInt(discogsUrlMatch[1], 10);
+    await _dfShowReleaseConfirm(releaseId);
+    return;
+  }
+
+  // 5. General search: extract as much as we can from the message
+  await _dfSearchAndPresent(text);
+}
+
+/**
+ * Search Discogs for candidates matching the user's message and present them.
+ *
+ * @param {string} query  – raw user text
+ */
+async function _dfSearchAndPresent(query) {
+  if (!window.discogsService) {
+    _dfAppendMessage("assistant",
+      "⚠️ <strong>Discogs API not configured.</strong> " +
+      "Please add your Discogs credentials in <a href=\"settings.html\" class=\"text-primary underline\">Settings</a> " +
+      "to enable release search. You can still paste a direct Discogs release URL.",
+    );
+    return;
+  }
+
+  // Rough parse: try to extract artist and title from free text
+  let artist = document.getElementById("dfArtistInput")?.value.trim() || "";
+  let title = document.getElementById("dfTitleInput")?.value.trim() || "";
+  let catNo = document.getElementById("dfCatNoInput")?.value.trim() || "";
+  // Merge in anything typed in the chat
+  if (!artist || !title) {
+    const dashParts = query.split(/\s*[-–—]\s*/);
+    if (dashParts.length >= 2) {
+      artist = artist || dashParts[0].trim();
+      title = title || dashParts[1].trim();
+    } else {
+      artist = artist || query;
+    }
+  }
+
+  _dfShowTyping();
+  _dfAppendMessage("assistant",
+    `🔍 Searching Discogs for <strong>${_dfEscape(artist)}${title ? " — " + _dfEscape(title) : ""}</strong>…`,
+  );
+
+  let candidates = [];
+  try {
+    candidates = await window.discogsService.searchReleaseCandidates(
+      artist, title, catNo || null, 5,
+    );
+  } catch (e) {
+    console.warn("Discogs search failed:", e);
+  }
+
+  _dfHideTyping();
+
+  if (!candidates || candidates.length === 0) {
+    _dfAppendMessage("assistant",
+      "I couldn't find any releases on Discogs for that search. " +
+      "Try being more specific — include the label, year, pressing country, or paste a Discogs URL directly.",
+    );
+    return;
+  }
+
+  _dfState.pendingCandidates = candidates;
+
+  const listItems = candidates.map((c, i) => {
+    const year = c.year ? ` (${c.year})` : "";
+    const country = c.country ? ` · ${c.country}` : "";
+    const label = (c.label || []).join(", ");
+    const catno = c.catno ? ` [${c.catno}]` : "";
+    return `<li class="py-1 border-b border-gray-800 last:border-0">
+      <button onclick="_dfPickCandidate(${i})"
+        class="w-full text-left px-2 py-1.5 rounded hover:bg-deal/10 transition-all text-sm">
+        <strong class="text-gray-100">${i + 1}. ${_dfEscape(c.title)}${year}</strong><br>
+        <span class="text-gray-500 text-xs">${_dfEscape(label)}${catno}${country}</span>
+      </button>
+    </li>`;
+  }).join("");
+
+  _dfAppendMessage("assistant",
+    `I found <strong>${candidates.length}</strong> possible releases. Click one to confirm, or type its number:<br>
+    <ul class="mt-2 bg-surface rounded-lg border border-gray-700 overflow-hidden">${listItems}</ul>`,
+  );
+}
+
+/**
+ * Called when the user clicks a candidate from the list buttons.
+ *
+ * @param {number} index  – index into _dfState.pendingCandidates
+ */
+async function _dfPickCandidate(index) {
+  const candidate = _dfState.pendingCandidates[index];
+  if (!candidate) return;
+  _dfState.pendingCandidates = [];
+  await _dfShowReleaseConfirm(candidate.id);
+}
+
+/**
+ * Fetch a release from Discogs and show the "Is this the one?" confirmation popup.
+ *
+ * @param {number} releaseId
+ */
+async function _dfShowReleaseConfirm(releaseId) {
+  _dfShowTyping();
+  let release = null;
+  try {
+    release = await window.discogsService?.getReleaseDetails(releaseId);
+  } catch (e) {
+    console.warn("Failed to fetch release:", e);
+  }
+  _dfHideTyping();
+
+  if (!release) {
+    _dfAppendMessage("assistant",
+      `Could not fetch release #${releaseId} from Discogs. ` +
+      "Please check your API credentials or try a different release.",
+    );
+    return;
+  }
+
+  _dfState.confirmedRelease = release;
+
+  // Build a rich preview card inline in the chat
+  const artist = (release.artists || []).map((a) => a.name.replace(/\s*\(\d+\)\s*$/, "")).join(", ") || "Unknown";
+  const title = release.title || "Unknown";
+  const year = release.year || "";
+  const country = release.country || "";
+  const label = (release.labels || []).map((l) => l.name).join(", ");
+  const catno = (release.labels || []).map((l) => l.catno).filter(Boolean).join(", ");
+  const formats = (release.formats || []).map((f) => f.name + (f.descriptions ? ` (${f.descriptions.join(", ")})` : "")).join("; ");
+  const imageUrl = release.images?.[0]?.uri150 || release.images?.[0]?.resource_url || "";
+  const discogsUrl = release.uri || `https://www.discogs.com/release/${releaseId}`;
+
+  const identifiers = release.identifiers || [];
+  const matrixItems = identifiers.filter((i) => i.type === "Matrix / Runout" || i.type === "Runout");
+  const matrixHtml = matrixItems.length > 0
+    ? `<p class="text-xs mt-1"><strong>Matrix:</strong> ${matrixItems.map((m) => _dfEscape(m.value)).join(" | ")}</p>`
+    : "";
+
+  const notesSnippet = release.notes
+    ? `<p class="text-xs text-gray-500 mt-1 italic">${_dfEscape(release.notes.substring(0, 120))}${release.notes.length > 120 ? "…" : ""}</p>`
+    : "";
+
+  _dfAppendMessage("assistant",
+    `Is this the release?<br>
+    <div class="mt-2 rounded-xl border border-deal/40 bg-surface overflow-hidden">
+      ${imageUrl ? `<img src="${imageUrl}" alt="Release cover" class="w-full h-32 object-cover object-top">` : ""}
+      <div class="p-3">
+        <p class="font-bold text-gray-100">${_dfEscape(artist)} — ${_dfEscape(title)}${year ? ` (${year})` : ""}</p>
+        <p class="text-xs text-gray-400">${_dfEscape(label)}${catno ? ` · ${catno}` : ""}${country ? ` · ${country}` : ""}</p>
+        ${formats ? `<p class="text-xs text-gray-500 mt-0.5">${_dfEscape(formats)}</p>` : ""}
+        ${matrixHtml}
+        ${notesSnippet}
+        <a href="${discogsUrl}" target="_blank" rel="noopener noreferrer"
+          class="text-xs text-primary hover:underline mt-1 inline-block">
+          View full page on Discogs ↗
+        </a>
+        <div class="flex gap-2 mt-3">
+          <button onclick="_dfConfirmRelease()"
+            class="flex-1 px-3 py-2 bg-deal/20 border border-deal/50 text-deal rounded-lg text-xs font-semibold hover:bg-deal/30 transition-all">
+            ✓ Yes, this is it
+          </button>
+          <button onclick="_dfRejectRelease()"
+            class="flex-1 px-3 py-2 bg-surface border border-gray-600 text-gray-400 rounded-lg text-xs hover:border-gray-500 transition-all">
+            ✗ Not this one
+          </button>
+        </div>
+      </div>
+    </div>`,
+  );
+}
+
+/** User confirmed the suggested release — run arbitrage. */
+async function _dfConfirmRelease() {
+  const release = _dfState.confirmedRelease;
+  if (!release) return;
+  _dfAppendMessage("user", "✓ Yes, that's the one!");
+  _dfState.messages.push({ role: "user", content: "Confirmed release." });
+  await _dfRunArbitrage(release);
+}
+
+/** User rejected the suggested release. */
+function _dfRejectRelease() {
+  _dfState.confirmedRelease = null;
+  _dfAppendMessage("user", "✗ Not this one.");
+  _dfAppendMessage("assistant",
+    "No problem! Can you give me more details to narrow it down? " +
+    "For example: label, catalogue number, pressing country, year, or matrix numbers. " +
+    "Or paste the Discogs URL directly.",
+  );
+}
+
+/**
+ * Run the full arbitrage analysis for a confirmed Discogs release and display
+ * the results in the chat.
+ *
+ * @param {object} release  – full Discogs release object
+ */
+async function _dfRunArbitrage(release) {
+  _dfAppendMessage("assistant",
+    `Great! Running arbitrage analysis for <strong>${_dfEscape(release.title)}</strong>…`,
+  );
+  _dfShowTyping();
+
+  const releaseId = release.id;
+  let priceSuggestions = null;
+  let marketplaceListings = [];
+
+  if (window.discogsService) {
+    try {
+      priceSuggestions = await window.discogsService.getPriceSuggestions(releaseId);
+    } catch (e) { /* ignore */ }
+    try {
+      marketplaceListings = await window.discogsService.getMarketplaceListings(releaseId, 5, null);
+    } catch (e) { /* ignore */ }
+  }
+
+  _dfHideTyping();
+
+  const conditionOrder = ["Near Mint (NM or M-)", "Very Good Plus (VG+)", "Very Good (VG)", "Good Plus (G+)"];
+  const suggestedPrices = {};
+  if (priceSuggestions) {
+    conditionOrder.forEach((c) => {
+      if (priceSuggestions[c]?.value) {
+        suggestedPrices[c] = priceSuggestions[c].value;
+      }
+    });
+  }
+
+  const lowestMarket = marketplaceListings.length > 0
+    ? Math.min(...marketplaceListings.map((l) => parseFloat(l.price?.value || 99999)))
+    : null;
+
+  const discogsUrl = release.uri || `https://www.discogs.com/release/${releaseId}`;
+  const artist = (release.artists || []).map((a) => a.name.replace(/\s*\(\d+\)\s*$/, "")).join(", ");
+  const ebaySearchQ = encodeURIComponent(`${artist} ${release.title} vinyl`);
+  const ebaySoldUrl = `https://www.ebay.co.uk/sch/i.html?_nkw=${ebaySearchQ}&_sacat=176985&LH_Sold=1&LH_Complete=1`;
+  const vymVG = buildValueYourMusicUrl(artist, release.title, "", "", "VG");
+  const vymVGPlus = buildValueYourMusicUrl(artist, release.title, "", "", "VG+");
+
+  // Build price table
+  const priceRows = Object.entries(suggestedPrices)
+    .map(([cond, val]) => `<tr><td class="py-1 pr-3 text-gray-400 text-xs">${_dfEscape(cond)}</td><td class="py-1 font-bold text-gray-100 text-xs">£${parseFloat(val).toFixed(2)}</td></tr>`)
+    .join("");
+
+  const lowestNote = lowestMarket
+    ? `<p class="text-xs text-gray-400 mt-1">Lowest current Discogs listing: <strong class="text-profit">£${lowestMarket.toFixed(2)}</strong></p>`
+    : "";
+
+  // Rough arbitrage hint
+  const vgpVal = suggestedPrices["Very Good Plus (VG+)"] || suggestedPrices["Near Mint (NM or M-)"];
+  const arbHint = vgpVal && lowestMarket
+    ? (() => {
+        const arb = calculateArbitrage(lowestMarket, parseFloat(vgpVal), 3.00);
+        return `
+          <div class="mt-3 p-3 rounded-lg border ${arb.isViable ? "border-deal/40 bg-deal/5" : "border-gray-700 bg-surface"}">
+            <p class="text-xs font-semibold text-gray-300 mb-1">Quick Arbitrage Estimate (buy lowest Discogs → sell at VG+ suggested)</p>
+            <div class="flex items-center gap-4">
+              <div class="text-center">
+                <p class="text-xs text-gray-500">Net Profit</p>
+                <p class="text-lg font-bold ${arb.netProfit >= 0 ? "text-profit" : "text-loss"}">£${arb.netProfit.toFixed(2)}</p>
+              </div>
+              <div class="text-center">
+                <p class="text-xs text-gray-500">ROI</p>
+                <p class="text-lg font-bold ${arb.roi >= 30 ? "text-profit" : "text-yellow-400"}">${arb.roi}%</p>
+              </div>
+              <div class="flex-1 text-right">
+                <span class="px-2 py-1 rounded text-xs font-bold ${arb.isHot ? "bg-profit text-white" : arb.isViable ? "bg-deal/20 text-deal" : "bg-gray-700 text-gray-400"}">
+                  ${arb.isHot ? "🔥 HOT" : arb.isViable ? "✓ VIABLE" : "✗ PASS"}
+                </span>
+              </div>
+            </div>
+          </div>`;
+      })()
+    : "";
+
+  _dfAppendMessage("assistant",
+    `<strong>Arbitrage Analysis Complete</strong> 🎵<br>
+    <div class="mt-2 space-y-2 text-xs">
+      ${priceRows.length ? `
+      <div class="bg-surface rounded-lg p-2 border border-gray-700">
+        <p class="font-semibold text-gray-300 mb-1">Discogs Suggested Prices</p>
+        <table class="w-full">${priceRows}</table>
+      </div>` : ""}
+      ${lowestNote}
+      ${arbHint}
+      <div class="flex flex-wrap gap-2 mt-3">
+        <a href="${ebaySoldUrl}" target="_blank" rel="noopener noreferrer"
+          class="px-3 py-1.5 bg-red-600/20 border border-red-500/30 text-red-400 rounded text-xs hover:bg-red-600/30 transition-all">
+          eBay Sold Prices ↗
+        </a>
+        <a href="${vymVGPlus}" target="_blank" rel="noopener noreferrer"
+          class="px-3 py-1.5 bg-surface border border-gray-700 text-gray-400 rounded text-xs hover:border-deal hover:text-deal transition-all">
+          VYM Sold (VG+) ↗
+        </a>
+        <a href="${vymVG}" target="_blank" rel="noopener noreferrer"
+          class="px-3 py-1.5 bg-surface border border-gray-700 text-gray-400 rounded text-xs hover:border-deal hover:text-deal transition-all">
+          VYM Sold (VG) ↗
+        </a>
+        <a href="${discogsUrl}" target="_blank" rel="noopener noreferrer"
+          class="px-3 py-1.5 bg-surface border border-gray-700 text-gray-400 rounded text-xs hover:border-primary hover:text-primary transition-all">
+          Discogs Release ↗
+        </a>
+      </div>
+      <p class="text-gray-600 mt-1">
+        Check the VYM or eBay sold links for real sold data, paste prices into the
+        <strong>Sold Price Research</strong> panel to get a precise median.
+      </p>
+    </div>`,
+  );
+
+  // Auto-populate the Release Price Lookup panel for full analysis
+  const lookupInput = document.getElementById("releaseLookupInput");
+  if (lookupInput && releaseId) {
+    lookupInput.value = String(releaseId);
+  }
+}
+
+// Initialise assistant when DOM is ready
+document.addEventListener("DOMContentLoaded", () => {
+  initDealFinderAssistant();
+});
