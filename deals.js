@@ -1929,7 +1929,7 @@ function openEbayLoginPopup() {
   const popup = window.open(
     "https://signin.ebay.co.uk/signin",
     "ebay_login",
-    "width=520,height=680,scrollbars=yes,resizable=yes,toolbar=no,menubar=no,noopener,noreferrer",
+    "width=520,height=680,scrollbars=yes,resizable=yes,toolbar=no,menubar=no",
   );
   if (!popup || popup.closed) {
     showToast(
@@ -1938,6 +1938,8 @@ function openEbayLoginPopup() {
     );
     return;
   }
+  // Prevent the opened page from navigating the opener via window.opener
+  try { popup.opener = null; } catch (_) { /* some browsers restrict this assignment */ }
   showToast("eBay sign-in opened in popup — log in to browse your flips.", "success");
 }
 
@@ -1966,15 +1968,17 @@ function openEbayFlipBrowser(mode) {
   const popup = window.open(
     url,
     "ebay_flip",
-    "width=1100,height=800,scrollbars=yes,resizable=yes,toolbar=yes,menubar=no,noopener,noreferrer",
+    "width=1100,height=800,scrollbars=yes,resizable=yes,toolbar=yes,menubar=no",
   );
-  if (popup && !popup.closed) {
-    // Ensure the new window cannot access or navigate the opener
-    popup.opener = null;
-  } else {
-    // Fall back to a standard new tab
-    window.open(url, "_blank", "noopener,noreferrer");
+  if (!popup || popup.closed) {
+    showToast(
+      "Pop-up blocked — please allow pop-ups for this site and try again.",
+      "warning",
+    );
+    return;
   }
+  // Prevent the opened page from navigating the opener via window.opener
+  try { popup.opener = null; } catch (_) { /* some browsers restrict this assignment */ }
 }
 
 // ─── Deal Finder AI Assistant ─────────────────────────────────────────────────
@@ -2063,7 +2067,7 @@ function _dfSafeUrl(url, allowedHosts) {
     if (parsed.protocol !== "https:") return "";
     const host = parsed.hostname;
     if (!allowedHosts.some((h) => host === h || host.endsWith("." + h))) return "";
-    return url;
+    return parsed.href;
   } catch {
     return "";
   }
