@@ -77,13 +77,22 @@
               calculate profit margins before you buy.
             </p>
           </div>
-          <div class="flex gap-3">
+          <div class="flex flex-wrap gap-3">
             <button
-              onclick="window.open('https://www.ebay.com', '_blank', 'noopener,noreferrer')"
+              onclick="openEbayLoginPopup()"
               class="px-4 py-2 bg-red-600/20 border border-red-500/40 text-red-400 rounded-lg font-medium hover:bg-red-600/30 hover:border-red-500/60 transition-all flex items-center gap-2"
+              title="Log in to eBay in a popup to browse potential flips without leaving this page"
+            >
+              <i data-feather="log-in" class="w-4 h-4"></i>
+              eBay Login
+            </button>
+            <button
+              onclick="openEbayFlipBrowser('live')"
+              class="px-4 py-2 bg-surface-light border border-red-500/30 text-red-300 rounded-lg font-medium hover:border-red-400 hover:text-red-400 transition-all flex items-center gap-2"
+              title="Open eBay vinyl listings in a popup — browse for potential flips"
             >
               <i data-feather="shopping-bag" class="w-4 h-4"></i>
-              Open eBay
+              Browse eBay Flips
             </button>
             <button
               onclick="importFromCSV()"
@@ -465,6 +474,160 @@
           <i data-feather="info" class="w-3 h-3 inline-block mr-1"></i>
           Tip: Log in to eBay in the new tab, then use sold listings to see real completed-sale prices for accurate market data.
         </p>
+      </div>
+
+      <!-- ValueYourMusic Sold Price Research Panel -->
+      <div class="mt-8 bg-surface-light rounded-2xl p-6 border border-gray-800">
+        <h2 class="text-xl font-semibold mb-1 flex items-center gap-2">
+          <i data-feather="bar-chart-2" class="w-5 h-5 text-deal"></i>
+          Sold Price Research
+        </h2>
+        <p class="text-sm text-gray-400 mb-4">
+          Build a <strong>ValueYourMusic</strong> sold-listings search URL from your record details
+          (artist, title, matrix runout). Open the search in a new tab, then paste the sold prices
+          back here to get an instant low / median / high for your pricing decision.
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1" for="vymArtist">Artist</label>
+            <input type="text" id="vymArtist" placeholder="e.g. The Beatles"
+              class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg text-sm focus:border-deal focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1" for="vymTitle">Title</label>
+            <input type="text" id="vymTitle" placeholder="e.g. Revolver"
+              class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg text-sm focus:border-deal focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1" for="vymCondition">Condition</label>
+            <select id="vymCondition"
+              class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg text-sm focus:border-deal focus:outline-none">
+              <option value="M">M (Mint)</option>
+              <option value="NM">NM (Near Mint)</option>
+              <option value="VG+" selected>VG+</option>
+              <option value="VG">VG (Very Good)</option>
+              <option value="G+">G+</option>
+              <option value="G">G</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1" for="vymMatrixA">Matrix / Runout Side A</label>
+            <input type="text" id="vymMatrixA" placeholder="e.g. XEX-605-2"
+              class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg text-sm focus:border-deal focus:outline-none font-mono" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1" for="vymMatrixB">Matrix / Runout Side B</label>
+            <input type="text" id="vymMatrixB" placeholder="e.g. XEX-606-2"
+              class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg text-sm focus:border-deal focus:outline-none font-mono" />
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-4">
+          <button onclick="lookupVymPrices()"
+            class="px-5 py-2 bg-gradient-to-r from-deal to-primary rounded-lg font-medium hover:shadow-lg hover:shadow-deal/25 transition-all flex items-center gap-2">
+            <i data-feather="external-link" class="w-4 h-4"></i>
+            Open Sold Listings
+          </button>
+          <button onclick="openEbayFlipBrowser('sold')"
+            class="px-4 py-2 bg-surface border border-red-500/30 text-red-400 rounded-lg text-sm font-medium hover:border-red-400 transition-all flex items-center gap-2">
+            <i data-feather="bar-chart-2" class="w-4 h-4"></i>
+            eBay Sold (popup)
+          </button>
+        </div>
+        <!-- Generated URL row (shown after search) -->
+        <div id="vymUrlRow" class="hidden mb-4">
+          <label class="block text-xs text-gray-500 mb-1">Generated ValueYourMusic URL</label>
+          <div class="flex gap-2">
+            <input type="text" id="vymGeneratedUrl" readonly
+              class="flex-1 px-3 py-2 bg-surface border border-gray-700 rounded-lg text-xs font-mono text-gray-400 focus:outline-none" />
+            <button onclick="copyVymUrl()"
+              class="px-3 py-2 border border-gray-600 rounded-lg text-xs text-gray-400 hover:border-deal hover:text-deal transition-all shrink-0">
+              Copy
+            </button>
+          </div>
+        </div>
+        <!-- Manual price entry for stats -->
+        <div class="border-t border-gray-800 pt-4 mt-2">
+          <label class="block text-xs text-gray-500 mb-1" for="vymPricesInput">
+            Paste sold prices from ValueYourMusic or eBay
+          </label>
+          <p id="vymPricesHelp" class="text-xs text-gray-600 mb-1">
+            Enter prices separated by commas or spaces, e.g. <code class="text-gray-400">12.50, 18, 22.00, 15.99</code>. Currency symbols are stripped automatically.
+          </p>
+          <input type="text" id="vymPricesInput"
+            placeholder="12.50, 18.00, 22.00, 15.99, 20.00 …"
+            oninput="recalculateVymStats()"
+            aria-describedby="vymPricesHelp"
+            class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg text-sm focus:border-deal focus:outline-none" />
+          <div id="vymStatsResult" class="mt-3">
+            <p class="text-xs text-gray-600">Enter sold prices above to see low / median / high.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Deal Finder AI Assistant Panel -->
+      <div class="mt-8 bg-surface-light rounded-2xl border border-gray-800 overflow-hidden">
+        <div class="p-6 border-b border-gray-800">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-semibold flex items-center gap-2 mb-1">
+                <i data-feather="cpu" class="w-5 h-5 text-deal"></i>
+                Deal Finder AI Assistant
+              </h2>
+              <p class="text-sm text-gray-400">
+                Tell me about a record — I'll search Discogs to confirm the exact pressing,
+                then run an arbitrage analysis showing you the best buy / sell opportunity.
+              </p>
+            </div>
+            <button onclick="initDealFinderAssistant()"
+              class="shrink-0 px-3 py-1.5 border border-gray-600 rounded-lg text-xs text-gray-400 hover:border-gray-500 hover:text-white transition-all flex items-center gap-1">
+              <i data-feather="refresh-cw" class="w-3 h-3"></i> Reset
+            </button>
+          </div>
+          <!-- Optional quick-fill fields -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
+            <div>
+              <label class="block text-xs text-gray-500 mb-1" for="dfArtistInput">Artist (optional)</label>
+              <input type="text" id="dfArtistInput" placeholder="e.g. Pink Floyd"
+                class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg text-sm focus:border-deal focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1" for="dfTitleInput">Title (optional)</label>
+              <input type="text" id="dfTitleInput" placeholder="e.g. The Wall"
+                class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg text-sm focus:border-deal focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1" for="dfCatNoInput">Cat # / Edition (optional)</label>
+              <input type="text" id="dfCatNoInput" placeholder="e.g. SHVL 804"
+                class="w-full px-3 py-2 bg-surface border border-gray-700 rounded-lg text-sm focus:border-deal focus:outline-none" />
+            </div>
+            <div class="flex items-end">
+              <button onclick="sendDealFinderMessage()"
+                class="w-full px-4 py-2 bg-gradient-to-r from-deal to-primary rounded-lg text-sm font-medium hover:shadow-lg hover:shadow-deal/25 transition-all flex items-center justify-center gap-2">
+                <i data-feather="search" class="w-4 h-4"></i>
+                Search Discogs
+              </button>
+            </div>
+          </div>
+        </div>
+        <!-- Chat area -->
+        <div id="dfChatArea"
+          class="h-80 overflow-y-auto p-4 space-y-2 bg-surface/50"
+          aria-live="polite" aria-label="Deal Finder AI conversation">
+          <!-- Messages injected by JS -->
+        </div>
+        <!-- Input row -->
+        <div class="p-4 border-t border-gray-800 flex gap-2">
+          <input type="text" id="dfUserInput"
+            placeholder="Describe the record, paste a Discogs URL or eBay link, or type artist — title…"
+            onkeydown="dfInputKeydown(event)"
+            class="flex-1 px-4 py-2 bg-surface border border-gray-700 rounded-xl text-sm focus:border-deal focus:outline-none"
+            aria-label="Message to Deal Finder AI assistant" />
+          <button onclick="sendDealFinderMessage()"
+            class="px-4 py-2 bg-deal hover:bg-deal/80 rounded-xl text-sm font-medium transition-all flex items-center gap-2 shrink-0">
+            <i data-feather="send" class="w-4 h-4"></i>
+            Send
+          </button>
+        </div>
       </div>
     </main>
 
