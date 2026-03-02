@@ -2525,6 +2525,52 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
     });
+
+    // Append AI-confirmed notes to the notes textarea
+    aiChat.addEventListener("notes-confirmed", (event) => {
+      const { note } = event.detail || {};
+      if (!note) return;
+      const notesEl = document.getElementById("notesInput");
+      if (notesEl) {
+        const existing = notesEl.value.trim();
+        notesEl.value = existing ? `${existing}\n${note}` : note;
+        notesEl.classList.add("border-green-500", "bg-green-500/10");
+        setTimeout(() => notesEl.classList.remove("border-green-500", "bg-green-500/10"), 3000);
+        showToast("Note added to listing notes!", "success");
+        // Show "Update Record Details" button since notes changed
+        const updateBtn = document.getElementById("updateRecordBtn");
+        if (updateBtn) updateBtn.classList.remove("hidden");
+      }
+    });
+  }
+
+  // Watch Quick Details fields — reveal "Update Record Details" button on any change
+  const quickDetailFieldIds = [
+    "artistInput", "titleInput", "catInput", "yearInput",
+    "matrixSideAInput", "matrixSideBInput", "costInput",
+    "vinylConditionInput", "sleeveConditionInput", "goalSelect",
+    "marketSelect", "notesInput",
+  ];
+  const updateBtn = document.getElementById("updateRecordBtn");
+  if (updateBtn) {
+    quickDetailFieldIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener("input", () => updateBtn.classList.remove("hidden"));
+        el.addEventListener("change", () => updateBtn.classList.remove("hidden"));
+      }
+    });
+
+    updateBtn.addEventListener("click", async () => {
+      updateBtn.classList.add("hidden");
+      showToast("Reconfiguring titles, pricing, and preview…", "success");
+      try {
+        await draftAnalysis();
+      } catch (e) {
+        console.error("Update Record Details failed:", e);
+        showToast("Update failed: " + e.message, "error");
+      }
+    });
   }
 
   // Warn about unsaved changes when leaving page with hosted images
@@ -9266,6 +9312,7 @@ function buildAboutDescription(discogsData, genreStr, pressingInfoStr) {
 }
 async function renderHTMLDescription(data, titleObj) {
   const { artist, title, catNo, year } = data;
+  const userNotes = document.getElementById("notesInput")?.value.trim() || "";
   // Use hosted URL if available, otherwise fallback to local object URL
   let heroImg = "";
   let galleryImages = [];
@@ -9516,7 +9563,13 @@ async function renderHTMLDescription(data, titleObj) {
     <p style="margin: 0; color: #1e3a8a; font-size: 14px;"><strong>Combined postage:</strong> Discount available for multiple purchases—please request invoice before payment.</p>
   </div>
 
-  <!-- CTA -->
+  ${userNotes ? `<!-- SELLER NOTES -->
+  <div style="background: #f0fdf4; border-left: 4px solid #22c55e; padding: 16px 20px; margin-bottom: 24px; border-radius: 0 8px 8px 0;">
+    <h3 style="margin: 0 0 10px 0; color: #166534; font-size: 16px; font-weight: 600;">Seller's Notes</h3>
+    <p style="margin: 0; color: #15803d; font-size: 14px; line-height: 1.6;">${userNotes}</p>
+  </div>
+` : ""}
+    <!-- CTA -->
   <div style="text-align: center; padding: 24px; background: #f1f5f9; border-radius: 12px;">
     <p style="margin: 0 0 8px 0; color: #475569; font-weight: 500;">Questions? Need more photos?</p>
     <p style="margin: 0; color: #64748b; font-size: 14px;">Message me anytime—happy to provide additional angles, audio clips, or pressing details.</p>
@@ -9686,24 +9739,83 @@ async function draftAnalysis() {
       "";
     const detectedArtist = artist || ocrResult?.artist || "Unknown Artist";
     const detectedTitle = title || ocrResult?.title || "Unknown Title";
+    const userNotes = document.getElementById("notesInput")?.value.trim() || "";
+    const matrixA = document.getElementById("matrixSideAInput")?.value.trim() || "";
+    const matrixB = document.getElementById("matrixSideBInput")?.value.trim() || "";
+    const vinylCond = document.getElementById("vinylConditionInput").value;
+    const sleeveCond = document.getElementById("sleeveConditionInput").value;
+    const discogsNotes = window._lastFetchedDiscogsData?.notes || "";
 
     const baseTitle = `${detectedArtist} - ${detectedTitle}`;
 
-    // Generate quick titles
-    const quickTitles = [
-      `${baseTitle} ${year ? `(${year})` : ""} ${catNo} VG+`.substring(0, 80),
-      `${baseTitle} Original Pressing Vinyl LP`.substring(0, 80),
-      `${detectedArtist} ${detectedTitle} ${catNo || "LP"}`.substring(0, 80),
-    ].map((t, i) => ({
-      text: t,
-      chars: t.length,
-      style: ["Quick", "Standard", "Compact"][i],
-    }));
+    // Generate quick titles — use AI when available for SEO-optimised suggestions
+    let quickTitles;
+    const aiAvailable = !!(service && service.apiKey);
+
+    if (aiAvailable && (detectedArtist !== "Unknown Artist" || detectedTitle !== "Unknown Title")) {
+      try {
+        const contextParts = [
+          `Artist: ${detectedArtist}`,
+          `Title: ${detectedTitle}`,
+          catNo && `Catalogue #: ${catNo}`,
+          year && `Year: ${year}`,
+          matrixA && `Matrix A: ${matrixA}`,
+          matrixB && `Matrix B: ${matrixB}`,
+          `Condition: Vinyl ${vinylCond} / Sleeve ${sleeveCond}`,
+          userNotes && `User notes: ${userNotes}`,
+          discogsNotes && `Discogs release notes: ${discogsNotes.substring(0, 300)}`,
+        ].filter(Boolean).join("\n");
+
+        const aiMessages = [
+          {
+            role: "system",
+            content:
+              "You are an eBay vinyl record listing SEO expert. Generate exactly 5 optimised eBay title options (max 80 chars each) for a vinyl record based on the details provided. Use collector keywords, pressing/condition signals, and any context from release notes or user notes to maximise search visibility. Return a JSON array of strings only, e.g. [\"Title 1\",\"Title 2\",...].",
+          },
+          {
+            role: "user",
+            content: `Generate 5 SEO-optimised eBay title options for this vinyl record:\n${contextParts}`,
+          },
+        ];
+
+        const aiResult = await callAI(aiMessages, 0.6);
+        if (aiResult) {
+          let parsed;
+          try {
+            const clean = aiResult.replace(/```(?:json)?\s*/gi, "").replace(/```\s*$/gi, "").trim();
+            parsed = JSON.parse(clean);
+          } catch (_e) {
+            parsed = null;
+          }
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const styleLabels = ["SEO Optimised", "Collector Focus", "Condition Forward", "Rarity Signal", "Keyword Rich"];
+            quickTitles = parsed.slice(0, 5).map((t, i) => ({
+              text: String(t).substring(0, 80),
+              chars: Math.min(String(t).length, 80),
+              style: styleLabels[i] || "AI Generated",
+            }));
+          }
+        }
+      } catch (e) {
+        console.log("AI title generation failed, falling back to templates:", e);
+      }
+    }
+
+    if (!quickTitles) {
+      // Fallback template titles
+      quickTitles = [
+        `${baseTitle} ${year ? `(${year})` : ""} ${catNo} VG+`.substring(0, 80),
+        `${baseTitle} Original Pressing Vinyl LP`.substring(0, 80),
+        `${detectedArtist} ${detectedTitle} ${catNo || "LP"}`.substring(0, 80),
+      ].map((t, i) => ({
+        text: t,
+        chars: t.length,
+        style: ["Quick", "Standard", "Compact"][i],
+      }));
+    }
 
     // Quick pricing estimate based on condition
     const cost = parseFloat(document.getElementById("costInput").value) || 10;
-    const vinylCond = document.getElementById("vinylConditionInput").value;
-    const sleeveCond = document.getElementById("sleeveConditionInput").value;
 
     const conditionMultipliers = {
       M: 3,
@@ -9741,9 +9853,11 @@ async function draftAnalysis() {
                 <h4 class="text-sm font-medium text-gray-400 uppercase tracking-wide">Preview Notes</h4>
                 <div class="p-3 bg-surface rounded-lg text-sm text-gray-400">
                     ${
-                      ocrResult
-                        ? `<p class="text-green-400 mb-2">✓ AI detected information from photos</p>`
-                        : `<p class="text-yellow-400 mb-2">⚠ Add API key in Settings for auto-detection</p>`
+                      aiAvailable
+                        ? `<p class="text-green-400 mb-2">\u2713 AI-generated SEO title suggestions</p>`
+                        : ocrResult
+                          ? `<p class="text-green-400 mb-2">\u2713 AI detected information from photos</p>`
+                          : `<p class="text-yellow-400 mb-2">\u26a0 Add API key in Settings for AI-generated titles</p>`
                     }
                     <p>This is a quick estimate based on your cost and condition. Run "Generate Full Listing" for complete market analysis, sold comps, and optimized pricing.</p>
                 </div>
@@ -9753,11 +9867,21 @@ async function draftAnalysis() {
                     <div class="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
                         <p class="text-xs text-green-400 font-medium mb-1">Detected from photos:</p>
                         <ul class="text-xs text-gray-400 space-y-1">
-                            ${ocrResult.artist ? `<li>• Artist: ${ocrResult.artist}</li>` : ""}
-                            ${ocrResult.title ? `<li>• Title: ${ocrResult.title}</li>` : ""}
-                            ${ocrResult.catalogueNumber ? `<li>• Cat#: ${ocrResult.catalogueNumber}</li>` : ""}
-                            ${ocrResult.year ? `<li>• Year: ${ocrResult.year}</li>` : ""}
+                            ${ocrResult.artist ? `<li>\u2022 Artist: ${ocrResult.artist}</li>` : ""}
+                            ${ocrResult.title ? `<li>\u2022 Title: ${ocrResult.title}</li>` : ""}
+                            ${ocrResult.catalogueNumber ? `<li>\u2022 Cat#: ${ocrResult.catalogueNumber}</li>` : ""}
+                            ${ocrResult.year ? `<li>\u2022 Year: ${ocrResult.year}</li>` : ""}
                         </ul>
+                    </div>
+                `
+                    : ""
+                }
+                ${
+                  userNotes
+                    ? `
+                    <div class="p-3 bg-primary/10 border border-primary/20 rounded-lg mt-2">
+                        <p class="text-xs text-primary font-medium mb-1">Your notes (included in listing):</p>
+                        <p class="text-xs text-gray-400">${userNotes.substring(0, 200)}${userNotes.length > 200 ? "\u2026" : ""}</p>
                     </div>
                 `
                     : ""
@@ -9795,6 +9919,7 @@ async function draftAnalysis() {
     ${year ? `<p><strong>Year:</strong> ${year}</p>` : ""}
     ${catNo ? `<p><strong>Catalogue #:</strong> ${catNo}</p>` : ""}
     <p><strong>Condition:</strong> Vinyl ${vinylCond}, Sleeve ${sleeveCond}</p>
+    ${userNotes ? `<p><strong>Notes:</strong> ${userNotes}</p>` : ""}
     <hr style="margin: 20px 0;">
     <p style="color: #666;">[Full description will be generated with complete market analysis]</p>
 </div>`;
@@ -9954,21 +10079,28 @@ async function generateListingWithAI() {
   const title = document.getElementById("titleInput").value.trim();
   const catNo = document.getElementById("catInput").value.trim();
   const year = document.getElementById("yearInput").value.trim();
+  const userNotes = document.getElementById("notesInput")?.value.trim() || "";
+  const discogsNotes = window._lastFetchedDiscogsData?.notes || "";
 
   if (!artist || !title) {
     showToast("Please enter at least artist and title", "error");
     return;
   }
 
+  const notesContext = [
+    userNotes && `User listing notes: ${userNotes}`,
+    discogsNotes && `Discogs release notes: ${discogsNotes.substring(0, 400)}`,
+  ].filter(Boolean).join(" | ");
+
   const messages = [
     {
       role: "system",
       content:
-        "You are a vinyl record eBay listing expert. Use the selected model once to identify the most likely Discogs release after checking photo evidence, and verify Tracklist, Notes, and Barcode/Other Identifiers (especially matrix/runout matches) before writing listing copy. Then provide a second-pass sold-price review (DeepSeek-style reasoning) focused on realistic sold values rather than asking prices. Always return JSON format with: titles (array), description (string), condition_notes (string), price_estimate (object with min, max, recommended), and tags (array).",
+        "You are a vinyl record eBay listing expert. Use the selected model once to identify the most likely Discogs release after checking photo evidence, and verify Tracklist, Notes, and Barcode/Other Identifiers (especially matrix/runout matches) before writing listing copy. Incorporate any provided user notes and Discogs release notes into the listing copy and title suggestions. Then provide a second-pass sold-price review (DeepSeek-style reasoning) focused on realistic sold values rather than asking prices. Always return JSON format with: titles (array), description (string), condition_notes (string), price_estimate (object with min, max, recommended), and tags (array).",
     },
     {
       role: "user",
-      content: `Generate an eBay listing for: ${artist} - ${title}${catNo ? ` (Catalog: ${catNo})` : ""}${year ? ` (${year})` : ""}${document.getElementById("matrixSideAInput")?.value?.trim() ? ` (Matrix A: ${document.getElementById("matrixSideAInput").value.trim()})` : ""}${document.getElementById("matrixSideBInput")?.value?.trim() ? ` (Matrix B: ${document.getElementById("matrixSideBInput").value.trim()})` : ""}. Verify the Discogs release page details against photo evidence, explicitly cover Tracklist and Notes from that release, and reference Barcode/Other Identifier + matrix/runout matches. Include optimized title options, professional HTML description with an About This Release section, condition guidance, sold-price-led estimate in GBP, and relevant tags.`,
+      content: `Generate an eBay listing for: ${artist} - ${title}${catNo ? ` (Catalog: ${catNo})` : ""}${year ? ` (${year})` : ""}${document.getElementById("matrixSideAInput")?.value?.trim() ? ` (Matrix A: ${document.getElementById("matrixSideAInput").value.trim()})` : ""}${document.getElementById("matrixSideBInput")?.value?.trim() ? ` (Matrix B: ${document.getElementById("matrixSideBInput").value.trim()})` : ""}${notesContext ? ` | ${notesContext}` : ""}. Verify the Discogs release page details against photo evidence, explicitly cover Tracklist and Notes from that release, and reference Barcode/Other Identifier + matrix/runout matches. Include optimized title options, professional HTML description with an About This Release section, condition guidance, sold-price-led estimate in GBP, and relevant tags.`,
     },
   ];
   const provider = localStorage.getItem("ai_provider") || "openai";

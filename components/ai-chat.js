@@ -3,6 +3,7 @@ class AIChat extends HTMLElement {
     super();
     this.messages = [];
     this.corrections = {};
+    this.pendingNoteAddition = null;
     this.learningData = JSON.parse(
       localStorage.getItem("ai_learning_data") || "{}",
     );
@@ -344,7 +345,8 @@ class AIChat extends HTMLElement {
             👋 <strong>Hello!</strong> I'm your vinyl record AI assistant.<br><br>
             📸 <strong>Upload photos</strong> of your record and I'll identify the artist, title, label, year, catalogue number, matrix, and more.<br><br>
             ✏️ If anything looks wrong, use the quick buttons below or type a correction like <em>"the artist is Black Sabbath"</em>.<br><br>
-            🔗 You can also <strong>paste a Discogs URL</strong> to fetch exact release details.
+            🔗 You can also <strong>paste a Discogs URL</strong> to fetch exact release details.<br><br>
+            📝 Say <em>"[term] on label"</em> (e.g. "Dr.Robert on label") to search the Discogs release notes for context, or <em>"add note: [text]"</em> to add a note directly to your listing.
           </div>
         </div>
         
@@ -615,6 +617,28 @@ class AIChat extends HTMLElement {
   }
 
   processUserMessage(message) {
+    // Handle pending note addition confirmation
+    if (this.pendingNoteAddition) {
+      if (/^(yes|yeah|sure|add|ok|confirm|yep|y)\b/i.test(message.trim())) {
+        const note = this.pendingNoteAddition;
+        this.pendingNoteAddition = null;
+        this.addMessage("Got it! I've added that to your listing notes.", "ai");
+        this.dispatchEvent(
+          new CustomEvent("notes-confirmed", {
+            detail: { note },
+            bubbles: true,
+            composed: true,
+          }),
+        );
+        return;
+      }
+      if (/^(no|nope|skip|cancel|don'?t)\b/i.test(message.trim())) {
+        this.pendingNoteAddition = null;
+        this.addMessage("OK, I'll skip adding that to the notes.", "ai");
+        return;
+      }
+    }
+
     // Check if this is a correction response
     if (this.pendingCorrection) {
       const field = this.pendingCorrection;
@@ -794,6 +818,33 @@ class AIChat extends HTMLElement {
       return;
     }
 
+    // Detect label/sleeve context queries (e.g. "Dr.Robert on label", "Bert on the label")
+    const labelContextMatch = message.match(
+      /(.+?)\s+(?:on|printed on|written on|on the)\s+(?:label|sleeve|cover|liner\s+notes?|insert|back cover|inner sleeve)/i,
+    );
+    if (labelContextMatch) {
+      this.searchDiscogsNotesForContext(labelContextMatch[1].trim(), message);
+      return;
+    }
+
+    // "add note: [text]" — directly add text to notes
+    const addNoteMatch = message.match(/^add\s+note\s*[:—]\s*(.+)/i);
+    if (addNoteMatch) {
+      const noteText = addNoteMatch[1].trim();
+      this.addMessage(
+        `Got it! I've added that to your listing notes.`,
+        "ai",
+      );
+      this.dispatchEvent(
+        new CustomEvent("notes-confirmed", {
+          detail: { note: noteText },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      return;
+    }
+
     // Single standalone year (e.g. "1971" or "it came out in 1971").
     // Limit to short messages (≤ 6 words) so that a full description with a year
     // goes through parseRecordDescription instead of being treated as a year-only input.
@@ -813,9 +864,64 @@ class AIChat extends HTMLElement {
         "• Type a full description like <em>\"Artist – Title LP Year CatNo Condition\"</em><br>" +
         "• Say something like <em>\"the year is 1973\"</em> or <em>\"the artist is Black Sabbath\"</em><br>" +
         "• Paste a Discogs release URL to fetch the correct details<br>" +
+        "• Type <em>\"[term] on label\"</em> to search the Discogs release notes for context<br>" +
+        "• Type <em>\"add note: [your text]\"</em> to add a note directly to the listing<br>" +
         "Or click <strong>✓ All Correct</strong> if everything looks good!",
         "ai",
       );
+    }, 800);
+  }
+
+  /**
+   * Search the loaded Discogs release notes for a contextual term
+   * (e.g. "Dr.Robert") and prompt the user to add the finding to notes.
+   */
+  searchDiscogsNotesForContext(searchTerm, originalMessage) {
+    const discogsData = window._lastFetchedDiscogsData;
+
+    if (!discogsData) {
+      this.showTyping();
+      setTimeout(() => {
+        this.hideTyping();
+        this.addMessage(
+          `I can look up "<strong>${this.escapeHtml(searchTerm)}</strong>" in the Discogs release notes once a release is matched. Try pasting a Discogs URL first.`,
+          "ai",
+        );
+      }, 600);
+      return;
+    }
+
+    const notes = (discogsData.notes || "").trim();
+    const searchWords = searchTerm.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+    const notesLower = notes.toLowerCase();
+    const found = searchWords.length > 0 && searchWords.some((w) => notesLower.includes(w));
+
+    this.showTyping();
+    setTimeout(() => {
+      this.hideTyping();
+      if (found && notes) {
+        const snippet = notes.length > 250 ? notes.substring(0, 250) + "…" : notes;
+        const noteText = originalMessage;
+        this.addMessage(
+          `✅ Found context for "<strong>${this.escapeHtml(searchTerm)}</strong>" in the Discogs release notes:<br>` +
+            `<em style="font-size:11px;color:#94a3b8">${this.escapeHtml(snippet)}</em><br><br>` +
+            `Would you like me to add <em>"${this.escapeHtml(noteText)}"</em> to your listing notes? (Reply <strong>yes</strong> to confirm)`,
+          "ai",
+        );
+        this.pendingNoteAddition = noteText;
+      } else if (notes) {
+        this.addMessage(
+          `I checked the Discogs release notes for "<strong>${this.escapeHtml(searchTerm)}</strong>" but didn't find a direct match.<br>` +
+            `The notes read: <em style="font-size:11px;color:#94a3b8">${this.escapeHtml(notes.length > 200 ? notes.substring(0, 200) + "…" : notes)}</em><br><br>` +
+            `You can still manually add a note — just say <em>"add note: [your text]"</em> or type it in the Notes field directly.`,
+          "ai",
+        );
+      } else {
+        this.addMessage(
+          `No release notes are available for the current Discogs match. Try linking a specific release URL so I can check its notes page.`,
+          "ai",
+        );
+      }
     }, 800);
   }
 
@@ -1160,6 +1266,7 @@ class AIChat extends HTMLElement {
     this.corrections = {};
     this.currentDetection = null;
     this.pendingCorrection = null;
+    this.pendingNoteAddition = null;
 
     const messagesArea = this.shadowRoot.getElementById("messagesArea");
     messagesArea.innerHTML = `
@@ -1167,7 +1274,8 @@ class AIChat extends HTMLElement {
         👋 <strong>Hello!</strong> I'm your vinyl record AI assistant.<br><br>
         📸 <strong>Upload photos</strong> of your record and I'll identify the artist, title, label, year, catalogue number, matrix, and more.<br><br>
         ✏️ If anything looks wrong, use the quick buttons below or type a correction like <em>"the artist is Black Sabbath"</em>.<br><br>
-        🔗 You can also <strong>paste a Discogs URL</strong> to fetch exact release details.
+        🔗 You can also <strong>paste a Discogs URL</strong> to fetch exact release details.<br><br>
+        📝 Say <em>"[term] on label"</em> to search the Discogs release notes for context, or <em>"add note: [text]"</em> to add a note directly.
       </div>
     `;
     this.setStatus("ready");
