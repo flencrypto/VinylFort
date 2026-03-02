@@ -828,7 +828,7 @@ class AIChat extends HTMLElement {
     }
 
     // "add note: [text]" — directly add text to notes
-    const addNoteMatch = message.match(/^add\s+note\s*[:—]\s*(.+)/i);
+    const addNoteMatch = message.match(/^add\s+note\s*[:—\-–]\s*(.+)/i);
     if (addNoteMatch) {
       const noteText = addNoteMatch[1].trim();
       this.addMessage(

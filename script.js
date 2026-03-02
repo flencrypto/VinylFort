@@ -9782,13 +9782,13 @@ async function draftAnalysis() {
         if (aiResult) {
           let parsed;
           try {
-            const clean = aiResult.replace(/```(?:json)?\s*/gi, "").replace(/```\s*$/gi, "").trim();
+            const clean = aiResult.replace(/```(?:json)?\s*|\s*```$/gi, "").trim();
             parsed = JSON.parse(clean);
           } catch (_e) {
             parsed = null;
           }
           if (Array.isArray(parsed) && parsed.length > 0) {
-            const styleLabels = ["SEO Optimised", "Collector Focus", "Condition Forward", "Rarity Signal", "Keyword Rich"];
+            const styleLabels = ["SEO Optimized", "Collector Focus", "Condition Forward", "Rarity Signal", "Keyword Rich"];
             quickTitles = parsed.slice(0, 5).map((t, i) => ({
               text: String(t).substring(0, 80),
               chars: Math.min(String(t).length, 80),
