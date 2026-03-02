@@ -1793,8 +1793,13 @@ function buildValueYourMusicUrl(artist, title, matrixA, matrixB, condition = "VG
   }
   const slug = VYM_CONDITION_MAP[condition] || "very-good";
   const parts = [`${artist} ${title}`, matrixA, matrixB].filter(Boolean);
-  const q = encodeURIComponent(parts.join(", "));
-  return `https://www.valueyourmusic.com/vinyl?condition=${slug}&q=${q}&sort=date_end_desc&utf8=%E2%9C%93`;
+  const params = new URLSearchParams({
+    condition: slug,
+    q: parts.join(", "),
+    sort: "date_end_desc",
+    utf8: "✓",
+  });
+  return `https://www.valueyourmusic.com/vinyl?${params.toString()}`;
 }
 
 /**
@@ -1924,7 +1929,7 @@ function openEbayLoginPopup() {
   const popup = window.open(
     "https://signin.ebay.co.uk/signin",
     "ebay_login",
-    "width=520,height=680,scrollbars=yes,resizable=yes,toolbar=no,menubar=no",
+    "width=520,height=680,scrollbars=yes,resizable=yes,toolbar=no,menubar=no,noopener,noreferrer",
   );
   if (!popup || popup.closed) {
     showToast(
@@ -1961,9 +1966,12 @@ function openEbayFlipBrowser(mode) {
   const popup = window.open(
     url,
     "ebay_flip",
-    "width=1100,height=800,scrollbars=yes,resizable=yes,toolbar=yes,menubar=no",
+    "width=1100,height=800,scrollbars=yes,resizable=yes,toolbar=yes,menubar=no,noopener,noreferrer",
   );
-  if (!popup || popup.closed) {
+  if (popup && !popup.closed) {
+    // Ensure the new window cannot access or navigate the opener
+    popup.opener = null;
+  } else {
     // Fall back to a standard new tab
     window.open(url, "_blank", "noopener,noreferrer");
   }
@@ -2033,6 +2041,35 @@ function _dfEscape(str) {
 }
 
 /**
+ * Allowlists for Discogs-sourced URLs used in the assistant UI.
+ * Only exact hostnames and their direct subdomains are permitted.
+ */
+const _DF_DISCOGS_HOSTS = ["discogs.com"];
+const _DF_DISCOGS_IMAGE_HOSTS = ["img.discogs.com", "i.discogs.com"];
+
+/**
+ * Validate a URL against an allowlist of trusted hostnames.
+ * Returns the original URL if safe, or an empty string if not.
+ * Allowlist entries match the exact hostname or any direct subdomain
+ * (e.g. "discogs.com" permits "www.discogs.com" but NOT "evil.com").
+ *
+ * @param {string} url
+ * @param {string[]} allowedHosts  – required hostname allowlist
+ * @returns {string}
+ */
+function _dfSafeUrl(url, allowedHosts) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return "";
+    const host = parsed.hostname;
+    if (!allowedHosts.some((h) => host === h || host.endsWith("." + h))) return "";
+    return url;
+  } catch {
+    return "";
+  }
+}
+
+/**
  * Initialise (or reset) the Deal Finder AI assistant, showing the greeting.
  */
 function initDealFinderAssistant() {
@@ -2064,14 +2101,20 @@ function initDealFinderAssistant() {
 async function sendDealFinderMessage() {
   const input = document.getElementById("dfUserInput");
   const text = input?.value.trim();
-  if (!text) return;
+  const hasFields =
+    document.getElementById("dfArtistInput")?.value.trim() ||
+    document.getElementById("dfTitleInput")?.value.trim() ||
+    document.getElementById("dfCatNoInput")?.value.trim();
+  if (!text && !hasFields) return;
 
-  input.value = "";
-  _dfAppendMessage("user", _dfEscape(text));
-  _dfState.messages.push({ role: "user", content: text });
+  if (input) input.value = "";
+  if (text) {
+    _dfAppendMessage("user", _dfEscape(text));
+    _dfState.messages.push({ role: "user", content: text });
+  }
 
   // Route the message
-  await _dfProcessMessage(text);
+  await _dfProcessMessage(text || "");
 }
 
 /** Handle Enter key in the Deal Finder input. */
@@ -2109,6 +2152,7 @@ async function _dfProcessMessage(text) {
 
   // 3. Handle "no/wrong/next" — re-search if we had candidates
   if (/^(no|wrong|not\s+this|different|next|skip)\b/i.test(text)) {
+    _dfState.confirmedRelease = null;
     _dfAppendMessage("assistant",
       "OK, let me try a different search. Could you give me more details — " +
       "e.g. label, catalogue number, pressing country, or matrix numbers?",
@@ -2125,7 +2169,10 @@ async function _dfProcessMessage(text) {
     return;
   }
 
-  // 5. General search: extract as much as we can from the message
+  // 5. General search: extract as much as we can from the message.
+  // `text` may be empty when the user clicked "Search Discogs" with only the
+  // optional Artist/Title/Cat fields filled — _dfSearchAndPresent reads those
+  // fields directly and falls back gracefully when the query string is empty.
   await _dfSearchAndPresent(text);
 }
 
@@ -2250,8 +2297,8 @@ async function _dfShowReleaseConfirm(releaseId) {
   const label = (release.labels || []).map((l) => l.name).join(", ");
   const catno = (release.labels || []).map((l) => l.catno).filter(Boolean).join(", ");
   const formats = (release.formats || []).map((f) => f.name + (f.descriptions ? ` (${f.descriptions.join(", ")})` : "")).join("; ");
-  const imageUrl = release.images?.[0]?.uri150 || release.images?.[0]?.resource_url || "";
-  const discogsUrl = release.uri || `https://www.discogs.com/release/${releaseId}`;
+  const imageUrl = _dfSafeUrl(release.images?.[0]?.uri150 || release.images?.[0]?.resource_url || "", _DF_DISCOGS_IMAGE_HOSTS);
+  const discogsUrl = _dfSafeUrl(release.uri || `https://www.discogs.com/release/${releaseId}`, _DF_DISCOGS_HOSTS);
 
   const identifiers = release.identifiers || [];
   const matrixItems = identifiers.filter((i) => i.type === "Matrix / Runout" || i.type === "Runout");
@@ -2353,7 +2400,7 @@ async function _dfRunArbitrage(release) {
     ? Math.min(...marketplaceListings.map((l) => parseFloat(l.price?.value || 99999)))
     : null;
 
-  const discogsUrl = release.uri || `https://www.discogs.com/release/${releaseId}`;
+  const discogsUrl = _dfSafeUrl(release.uri || `https://www.discogs.com/release/${releaseId}`, _DF_DISCOGS_HOSTS);
   const artist = (release.artists || []).map((a) => a.name.replace(/\s*\(\d+\)\s*$/, "")).join(", ");
   const ebaySearchQ = encodeURIComponent(`${artist} ${release.title} vinyl`);
   const ebaySoldUrl = `https://www.ebay.co.uk/sch/i.html?_nkw=${ebaySearchQ}&_sacat=176985&LH_Sold=1&LH_Complete=1`;
