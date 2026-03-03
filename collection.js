@@ -437,14 +437,74 @@ function skipPhotoVerification() {
   currentVerifyIndex++;
   startPhotoVerification();
 }
+// Fetch eBay sold prices via Google search (no Discogs quota cost)
+async function fetchEbaySoldViaGoogle(artist, title, catalogueNumber) {
+  const cacheKey = `ebay_sold_${artist}_${title}_${catalogueNumber || ""}`.replace(/\s+/g, "_").toLowerCase();
+  const cached = localStorage.getItem(cacheKey);
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      if (parsed.ts && Date.now() - parsed.ts < 86400000) { // 24 hours
+        return parsed.results;
+      }
+    } catch (_) { /* ignore invalid cache */ }
+  }
+
+  try {
+    const query = encodeURIComponent(`site:ebay.co.uk "${artist}" "${title}" vinyl sold`);
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.google.com/search?q=${query}&num=20`)}`;
+    const response = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) }); // 10s timeout
+    if (!response.ok) return [];
+    const html = await response.text();
+
+    // Extract price snippets from Google result text
+    const results = [];
+    // Match patterns like £12.50 or GBP 12.50 appearing near ebay.co.uk links
+    const snippetRegex = /ebay\.co\.uk[^"]*?["'][^<]*?([£$]|GBP\s*)([\d]+\.[\d]{2})/gi;
+    let match;
+    while ((match = snippetRegex.exec(html)) !== null && results.length < 10) {
+      const price = parseFloat(match[2]);
+      if (!isNaN(price) && price > 0.5 && price < 5000) { // sanity-check: plausible vinyl price range
+        results.push({ price, date: new Date().toISOString().split("T")[0], condition: "Unknown", source: "ebay_google" });
+      }
+    }
+
+    // Deduplicate by price
+    const seen = new Set();
+    const unique = results.filter((r) => { const k = r.price.toFixed(2); if (seen.has(k)) return false; seen.add(k); return true; });
+
+    localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), results: unique }));
+    return unique;
+  } catch (e) {
+    console.log("eBay/Google fetch failed:", e);
+    return [];
+  }
+}
+
 // Market Analysis & Pricing with multi-source enrichment
 async function analyzeRecordForResale(record) {
   let marketData = null;
   let discogsData = null;
   let aiAnalysis = null;
 
-  // Step 1: Try Discogs API for release identification and marketplace data
-  if (window.discogsService?.key || window.discogsService?.token) {
+  // Step 1: Try eBay sold prices via Google (no Discogs quota cost, primary source)
+  try {
+    const ebaySold = await fetchEbaySoldViaGoogle(record.artist, record.title, record.catalogueNumber);
+    if (ebaySold && ebaySold.length > 0) {
+      marketData = {
+        source: "ebay_google",
+        lastSold: ebaySold,
+        medianPrice: ebaySold.sort((a, b) => a.price - b.price)[Math.floor(ebaySold.length / 2)]?.price || null,
+        fetchedAt: new Date().toISOString(),
+      };
+    }
+  } catch (e) {
+    console.log("eBay/Google sold lookup failed:", e);
+  }
+
+  // Step 2: Try Discogs API for release identification and marketplace data
+  // Only if we don't already have real sold data; don't make extra API calls
+  if (!marketData?.lastSold?.length && (window.discogsService?.key || window.discogsService?.token)) {
     try {
       const search = await window.discogsService.searchRelease(
         record.artist,
@@ -460,25 +520,31 @@ async function analyzeRecordForResale(record) {
     }
   }
 
-  // Step 2: Use GPT/AI for market analysis if we have API access
+  // Step 3: Use AI for qualitative analysis only (never for prices)
   const aiProvider = localStorage.getItem("ai_provider") || "openai";
   const hasAI =
     aiProvider === "deepseek"
       ? localStorage.getItem("deepseek_api_key")
       : localStorage.getItem("openai_api_key");
 
-  if (hasAI && (!Array.isArray(marketData?.lastSold) || marketData.lastSold.length < 3)) {
+  if (hasAI) {
     try {
       aiAnalysis = await fetchAIMarketAnalysis(record, marketData);
       if (aiAnalysis) {
-        marketData = { ...marketData, ...aiAnalysis };
+        // Only merge qualitative fields from AI — never pricing data
+        if (!marketData) marketData = { source: "estimated" };
+        marketData.demandTrend = aiAnalysis.demandTrend;
+        marketData.rarityScore = aiAnalysis.rarityScore;
+        marketData.recommendedAction = aiAnalysis.recommendedAction;
+        marketData.gradeAdjustment = aiAnalysis.gradeAdjustment;
+        marketData.confidence = aiAnalysis.confidence;
       }
     } catch (e) {
       console.log("AI market analysis failed:", e);
     }
   }
 
-  // Step 3: Fall back to CSV data or estimates
+  // Step 4: Fall back to CSV data or estimates
   if (!marketData) {
     marketData = record.csvMarketData
       ? { ...record.csvMarketData, source: "csv_import" }
@@ -522,30 +588,17 @@ async function fetchAIMarketAnalysis(record, existingData) {
 
   if (!apiKey) return null;
 
-  const prompt = `Analyze the vinyl record market for this specific release and provide pricing intelligence.
+  const prompt = `Assess the vinyl record market for this release.
 
 Record: ${record.artist} - ${record.title}
 Format: ${record.format || "LP"}
 Year: ${record.year || "unknown"}
 Label: ${record.label || "unknown"}
 Catalogue: ${record.catalogueNumber || "unknown"}
-Condition: Vinyl ${record.conditionVinyl}, Sleeve ${record.conditionSleeve}
-User's purchase price: £${record.purchasePrice || "unknown"}
-
 ${existingData?.discogsUrl ? `Discogs release: ${existingData.discogsUrl}` : ""}
 
-Research current market conditions and return JSON:
+Return ONLY this JSON (no other text):
 {
-    "last5Sold": [
-        {"condition": "NM", "price": 45.00, "date": "2024-01-15", "notes": "sealed"},
-        {"condition": "VG+", "price": 32.50, "date": "2024-01-10", "notes": ""}
-    ],
-    "medianSold": 38.00,
-    "currentListings": {
-        "lowest": 35.00,
-        "median": 55.00,
-        "highest": 120.00
-    },
     "gradeAdjustment": {
         "NM": 1.3,
         "VG+": 1.0,
@@ -556,9 +609,7 @@ Research current market conditions and return JSON:
     "rarityScore": "common|uncommon|rare|very rare",
     "recommendedAction": "hold|list quickly|price aggressively",
     "confidence": "high|medium|low"
-}
-
-Focus on actual sold prices, not asking prices. Consider condition carefully.`;
+}`;
 
   try {
     const response = await fetch(
@@ -577,12 +628,12 @@ Focus on actual sold prices, not asking prices. Consider condition carefully.`;
             {
               role: "system",
               content:
-                "You are a vinyl record market expert with access to sales data. Be precise with pricing.",
+                "You are a vinyl record market expert. Assess rarity, demand trends and selling strategy. Do NOT fabricate specific prices or sales data.",
             },
             { role: "user", content: prompt },
           ],
           temperature: 0.3,
-          max_tokens: 1500,
+          max_tokens: 500,
         }),
       },
     );
@@ -598,17 +649,13 @@ Focus on actual sold prices, not asking prices. Consider condition carefully.`;
 
     const analysis = JSON.parse(jsonStr.trim());
 
+    // Return only qualitative fields — never pricing data
     return {
-      lastSold: analysis.last5Sold || [],
-      medianSold: analysis.medianSold,
-      currentListings: analysis.currentListings,
       gradeAdjustment: analysis.gradeAdjustment,
       demandTrend: analysis.demandTrend,
       rarityScore: analysis.rarityScore,
       recommendedAction: analysis.recommendedAction,
       confidence: analysis.confidence,
-      source: "ai_analysis",
-      analyzedAt: new Date().toISOString(),
     };
   } catch (e) {
     console.error("AI analysis error:", e);
@@ -730,7 +777,7 @@ function calculateEstimatedValue(record, marketData) {
       .sort((a, b) => a - b);
     baseValue = sortedPrices[Math.floor(sortedPrices.length / 2)];
   } else if (marketData.medianSold) {
-    // Use AI-provided median sold
+    // Legacy fallback: use medianSold if present in older cached data
     baseValue =
       marketData.medianSold *
       (marketData.gradeAdjustment?.[record.conditionVinyl] || 1);
@@ -757,11 +804,11 @@ function calculateEstimatedValue(record, marketData) {
     const sleeveMult = conditionMultipliers[record.conditionSleeve] || 0.7;
     const conditionAdjust = vinylMult * 0.7 + sleeveMult * 0.3;
     baseValue = baseValue * conditionAdjust;
+  } else {
+    // gradeAdjustment handled vinyl condition already, only apply minor sleeve factor
+    const sleeveMult = conditionMultipliers[record.conditionSleeve] || 0.7;
+    baseValue = baseValue * (0.8 + sleeveMult * 0.2);
   }
-
-  // Apply sleeve condition adjustment
-  const sleeveMult = conditionMultipliers[record.conditionSleeve] || 0.7;
-  baseValue = baseValue * (0.8 + sleeveMult * 0.2); // Sleeve affects value 20%
 
   return Math.round(baseValue);
 }
@@ -1141,32 +1188,45 @@ function viewRecordDetail(index) {
   // Build market data display
   let marketDataHtml = "";
   if (Array.isArray(record.marketData?.lastSold) && record.marketData.lastSold.length > 0) {
+    const src = record.marketData.source;
+    const sourceLabel = src === "ebay_google"
+      ? "📊 eBay Sold (via Google)"
+      : src === "discogs" || src?.startsWith("discogs")
+        ? "💿 Discogs Price Guide"
+        : src === "csv_import" || src?.includes("csv")
+          ? "📁 CSV Import"
+          : "📈 Estimated";
     marketDataHtml = `
             <div class="bg-surface p-3 rounded-lg mb-3">
                 <div class="flex items-center justify-between mb-2">
-                    <p class="text-xs text-gray-500">Last 5 Sold (Similar Condition)</p>
-                    <span class="text-xs ${record.marketData.confidence === "high" ? "text-green-400" : "text-yellow-400"}">
-                        ${record.marketData.confidence || "medium"} confidence
-                    </span>
+                    <p class="text-xs text-gray-500">${sourceLabel}</p>
+                    ${record.marketData.confidence ? `<span class="text-xs ${record.marketData.confidence === "high" ? "text-green-400" : "text-yellow-400"}">
+                        ${record.marketData.confidence} confidence
+                    </span>` : ""}
                 </div>
                 <div class="space-y-1">
                     ${record.marketData.lastSold
                       .map(
-                        (sale) => `
+                        (sale) => {
+                          const priceDisplay = `£${parseFloat(sale.price).toFixed(2)}${sale.notes ? ` (${sale.notes})` : ""}`;
+                          const linkOpen = sale.url ? `<a href="${sale.url}" target="_blank" rel="noopener noreferrer" class="hover:underline text-primary">` : "";
+                          const linkClose = sale.url ? `</a>` : "";
+                          return `
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-400">${sale.condition} • ${sale.date}</span>
-                            <span class="text-gray-200">£${parseFloat(sale.price).toFixed(2)}${sale.notes ? ` (${sale.notes})` : ""}</span>
+                            <span class="text-gray-200">${linkOpen}${priceDisplay}${linkClose}</span>
                         </div>
-                    `,
+                    `;
+                        },
                       )
                       .join("")}
                 </div>
                 ${
-                  record.marketData.medianSold
+                  record.marketData.medianPrice
                     ? `
                     <div class="mt-2 pt-2 border-t border-gray-700 flex justify-between">
-                        <span class="text-xs text-gray-500">Median Sold</span>
-                        <span class="font-medium text-primary">£${parseFloat(record.marketData.medianSold).toFixed(2)}</span>
+                        <span class="text-xs text-gray-500">Median</span>
+                        <span class="font-medium text-primary">£${parseFloat(record.marketData.medianPrice).toFixed(2)}</span>
                     </div>
                 `
                     : ""
@@ -1194,28 +1254,6 @@ function viewRecordDetail(index) {
         `;
   }
 
-  // Current listings if available
-  if (record.marketData?.currentListings) {
-    marketDataHtml += `
-            <div class="bg-surface p-3 rounded-lg mb-3">
-                <p class="text-xs text-gray-500 mb-2">Current Listings</p>
-                <div class="grid grid-cols-3 gap-2 text-center text-sm">
-                    <div>
-                        <p class="text-xs text-gray-600">Lowest</p>
-                        <p class="text-green-400">£${record.marketData.currentListings.lowest}</p>
-                    </div>
-                    <div>
-                        <p class="text-xs text-gray-600">Median</p>
-                        <p class="text-gray-200">£${record.marketData.currentListings.median}</p>
-                    </div>
-                    <div>
-                        <p class="text-xs text-gray-600">Highest</p>
-                        <p class="text-orange-400">£${record.marketData.currentListings.highest}</p>
-                    </div>
-                </div>
-            </div>
-        `;
-  }
   content.innerHTML = `
         <div class="p-6 border-b border-gray-800 flex items-center justify-between">
             <div>

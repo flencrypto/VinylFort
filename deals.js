@@ -1071,6 +1071,53 @@ async function lookupReleaseDeals() {
 }
 
 /**
+ * Fetch eBay sold prices via Google and display them inline in the deal panel.
+ */
+async function fetchAndShowEbaySoldInPanel() {
+  const el = document.getElementById("ebaySoldPanelResult");
+  if (!el) return;
+
+  const artist = window._lookupArtist || "";
+  const title = window._lookupTitle || "";
+  const catno = window._lookupCatno || "";
+
+  if (!artist && !title) {
+    el.innerHTML = `<p class="text-xs text-yellow-400">No release loaded — look up a release first.</p>`;
+    return;
+  }
+
+  el.innerHTML = `<p class="text-xs text-gray-400 animate-pulse">Fetching eBay sold prices…</p>`;
+
+  let results = [];
+  if (typeof fetchEbaySoldViaGoogle === "function") {
+    results = await fetchEbaySoldViaGoogle(artist, title, catno);
+  }
+
+  if (!results || results.length === 0) {
+    el.innerHTML = `<p class="text-xs text-gray-500">No eBay sold prices found via Google. Try the manual links above.</p>`;
+    return;
+  }
+
+  const sorted = [...results].sort((a, b) => a.price - b.price);
+  const median = sorted[Math.floor(sorted.length / 2)]?.price;
+  const rows = sorted.map((s) => `
+    <div class="flex justify-between text-xs py-1 border-b border-gray-800">
+      <span class="text-gray-400">${s.condition} · ${s.date}</span>
+      <span class="text-gray-200 font-medium">£${parseFloat(s.price).toFixed(2)}</span>
+    </div>`).join("");
+
+  el.innerHTML = `
+    <div class="mt-2 p-3 bg-deal/10 border border-deal/30 rounded-lg">
+      <p class="text-xs text-deal font-semibold mb-2">📊 eBay Sold (via Google) — ${results.length} price${results.length > 1 ? "s" : ""} found</p>
+      ${rows}
+      ${median ? `<div class="mt-2 flex justify-between text-xs font-semibold">
+        <span class="text-gray-400">Median</span>
+        <span class="text-deal">£${parseFloat(median).toFixed(2)}</span>
+      </div>` : ""}
+    </div>`;
+}
+
+/**
  * Render the Release Price Lookup results panel.
  */
 function renderReleaseDealPanel(releaseId, release, suggestedPrice, lowestPrice, marketplaceListings, condition, priceSuggestions) {
@@ -1097,12 +1144,17 @@ function renderReleaseDealPanel(releaseId, release, suggestedPrice, lowestPrice,
   const ebayUSUrl = `https://www.ebay.com/sch/i.html?_nkw=${searchTermEncoded}&_sacat=176985&LH_ItemCondition=3000`;
   const googleEbayUrl = `https://www.google.com/search?q=${encodeURIComponent(`site:ebay.co.uk "${artist}" "${title}" vinyl`)}`;
 
+  // Store artist/title on window for the inline fetch button
+  window._lookupArtist = artist;
+  window._lookupTitle = title;
+  window._lookupCatno = (release?.labels || [])[0]?.catno || "";
+
   // Price reference cards
   const priceCards = [];
   if (lowestPrice) {
     priceCards.push(`
       <div class="p-3 bg-surface rounded-lg border border-gray-700">
-        <p class="text-xs text-gray-500 mb-1">Discogs Lowest Now</p>
+        <p class="text-xs text-gray-500 mb-1">💿 Discogs Lowest Now</p>
         <p class="text-xl font-bold text-profit">£${parseFloat(lowestPrice).toFixed(2)}</p>
         <p class="text-xs text-gray-600">${numForSale} for sale</p>
       </div>`);
@@ -1110,7 +1162,7 @@ function renderReleaseDealPanel(releaseId, release, suggestedPrice, lowestPrice,
   if (suggestedPrice) {
     priceCards.push(`
       <div class="p-3 bg-surface rounded-lg border border-deal/40">
-        <p class="text-xs text-gray-500 mb-1">Discogs Suggested (${condition})</p>
+        <p class="text-xs text-gray-500 mb-1">💿 Discogs Suggested (${condition})</p>
         <p class="text-xl font-bold text-deal">£${parseFloat(suggestedPrice).toFixed(2)}</p>
         <p class="text-xs text-gray-600">Use as target sell price</p>
       </div>`);
@@ -1129,7 +1181,7 @@ function renderReleaseDealPanel(releaseId, release, suggestedPrice, lowestPrice,
       .join("");
     suggestionsHtml = rows
       ? `<div class="mt-4">
-           <p class="text-xs text-gray-500 uppercase mb-2 font-semibold">Discogs Suggested Prices by Condition</p>
+           <p class="text-xs text-gray-500 uppercase mb-2 font-semibold">💿 Discogs Suggested Prices by Condition</p>
            ${rows}
          </div>`
       : "";
@@ -1222,6 +1274,11 @@ function renderReleaseDealPanel(releaseId, release, suggestedPrice, lowestPrice,
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
             eBay US (Live)
           </a>
+          <button onclick="fetchAndShowEbaySoldInPanel()"
+            class="px-3 py-2 bg-deal/20 border border-deal/50 text-deal rounded-lg text-sm font-medium hover:bg-deal/30 transition-all flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            📊 Fetch Sold Prices
+          </button>
           <a href="${googleEbayUrl}" target="_blank" rel="noopener noreferrer"
             class="px-3 py-2 bg-surface border border-gray-700 text-gray-300 rounded-lg text-sm font-medium hover:border-blue-400 hover:text-blue-400 transition-all flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -1233,6 +1290,7 @@ function renderReleaseDealPanel(releaseId, release, suggestedPrice, lowestPrice,
             Discogs Marketplace
           </a>
         </div>
+        <div id="ebaySoldPanelResult" class="mt-3"></div>
         <p class="text-xs text-gray-600 mt-2">Compare prices found on eBay against the Discogs suggested price to spot undervalued listings.</p>
       </div>
 
@@ -2379,6 +2437,16 @@ async function _dfRunArbitrage(release) {
   let priceSuggestions = null;
   let marketplaceListings = [];
 
+  const artist = (release.artists || []).map((a) => a.name.replace(/\s*\(\d+\)\s*$/, "")).join(", ");
+
+  // Try eBay sold via Google first (no Discogs quota cost)
+  let ebaySoldResults = [];
+  if (typeof fetchEbaySoldViaGoogle === "function") {
+    try {
+      ebaySoldResults = await fetchEbaySoldViaGoogle(artist, release.title, (release.labels || [])[0]?.catno || "");
+    } catch (e) { /* ignore */ }
+  }
+
   if (window.discogsService) {
     try {
       priceSuggestions = await window.discogsService.getPriceSuggestions(releaseId);
@@ -2405,7 +2473,6 @@ async function _dfRunArbitrage(release) {
     : null;
 
   const discogsUrl = _dfSafeUrl(release.uri || `https://www.discogs.com/release/${releaseId}`, _DF_DISCOGS_HOSTS);
-  const artist = (release.artists || []).map((a) => a.name.replace(/\s*\(\d+\)\s*$/, "")).join(", ");
   const ebaySearchQ = encodeURIComponent(`${artist} ${release.title} vinyl`);
   const ebaySoldUrl = `https://www.ebay.co.uk/sch/i.html?_nkw=${ebaySearchQ}&_sacat=176985&LH_Sold=1&LH_Complete=1`;
   const vymVG = buildValueYourMusicUrl(artist, release.title, "", "", "VG");
@@ -2447,12 +2514,26 @@ async function _dfRunArbitrage(release) {
       })()
     : "";
 
+  // Build eBay sold snippet if we got real results
+  const ebaySoldHtml = ebaySoldResults.length > 0
+    ? `<div class="bg-surface rounded-lg p-2 border border-deal/30 mt-2">
+        <p class="font-semibold text-deal mb-1">📊 eBay Sold (via Google) — ${ebaySoldResults.length} price${ebaySoldResults.length > 1 ? "s" : ""} found</p>
+        ${ebaySoldResults.map((s) => `<span class="inline-block mr-2 text-gray-200">£${parseFloat(s.price).toFixed(2)}</span>`).join("")}
+        ${(() => {
+          const sorted = [...ebaySoldResults].sort((a, b) => a.price - b.price);
+          const median = sorted[Math.floor(sorted.length / 2)]?.price;
+          return median ? `<p class="text-xs text-gray-400 mt-1">Median: <strong class="text-deal">£${parseFloat(median).toFixed(2)}</strong></p>` : "";
+        })()}
+      </div>`
+    : "";
+
   _dfAppendMessage("assistant",
     `<strong>Arbitrage Analysis Complete</strong> 🎵<br>
     <div class="mt-2 space-y-2 text-xs">
+      ${ebaySoldHtml}
       ${priceRows.length ? `
       <div class="bg-surface rounded-lg p-2 border border-gray-700">
-        <p class="font-semibold text-gray-300 mb-1">Discogs Suggested Prices</p>
+        <p class="font-semibold text-gray-300 mb-1">💿 Discogs Suggested Prices</p>
         <table class="w-full">${priceRows}</table>
       </div>` : ""}
       ${lowestNote}
@@ -2475,10 +2556,10 @@ async function _dfRunArbitrage(release) {
           Discogs Release ↗
         </a>
       </div>
-      <p class="text-gray-600 mt-1">
+      ${ebaySoldResults.length === 0 ? `<p class="text-gray-600 mt-1">
         Check the VYM or eBay sold links for real sold data, paste prices into the
         <strong>Sold Price Research</strong> panel to get a precise median.
-      </p>
+      </p>` : ""}
     </div>`,
   );
 
