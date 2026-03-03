@@ -437,49 +437,6 @@ function skipPhotoVerification() {
   currentVerifyIndex++;
   startPhotoVerification();
 }
-// Fetch eBay sold prices via Google search (no Discogs quota cost)
-async function fetchEbaySoldViaGoogle(artist, title, catalogueNumber) {
-  const cacheKey = `ebay_sold_${artist}_${title}_${catalogueNumber || ""}`.replace(/\s+/g, "_").toLowerCase();
-  const cached = localStorage.getItem(cacheKey);
-  if (cached) {
-    try {
-      const parsed = JSON.parse(cached);
-      if (parsed.ts && Date.now() - parsed.ts < 86400000) { // 24 hours
-        return parsed.results;
-      }
-    } catch (_) { /* ignore invalid cache */ }
-  }
-
-  try {
-    const query = encodeURIComponent(`site:ebay.co.uk "${artist}" "${title}" vinyl sold`);
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.google.com/search?q=${query}&num=20`)}`;
-    const response = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) }); // 10s timeout
-    if (!response.ok) return [];
-    const html = await response.text();
-
-    // Extract price snippets from Google result text
-    const results = [];
-    // Match patterns like £12.50 or GBP 12.50 appearing near ebay.co.uk links
-    const snippetRegex = /ebay\.co\.uk[^"]*?["'][^<]*?([£$]|GBP\s*)([\d]+\.[\d]{2})/gi;
-    let match;
-    while ((match = snippetRegex.exec(html)) !== null && results.length < 10) {
-      const price = parseFloat(match[2]);
-      if (!isNaN(price) && price > 0.5 && price < 5000) { // sanity-check: plausible vinyl price range
-        results.push({ price, date: new Date().toISOString().split("T")[0], condition: "Unknown", source: "ebay_google" });
-      }
-    }
-
-    // Deduplicate by price
-    const seen = new Set();
-    const unique = results.filter((r) => { const k = r.price.toFixed(2); if (seen.has(k)) return false; seen.add(k); return true; });
-
-    localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), results: unique }));
-    return unique;
-  } catch (e) {
-    console.log("eBay/Google fetch failed:", e);
-    return [];
-  }
-}
 
 // Market Analysis & Pricing with multi-source enrichment
 async function analyzeRecordForResale(record) {
@@ -1211,9 +1168,10 @@ function viewRecordDetail(index) {
                           const priceDisplay = `£${parseFloat(sale.price).toFixed(2)}${sale.notes ? ` (${sale.notes})` : ""}`;
                           const linkOpen = sale.url ? `<a href="${sale.url}" target="_blank" rel="noopener noreferrer" class="hover:underline text-primary">` : "";
                           const linkClose = sale.url ? `</a>` : "";
+                          const meta = [sale.condition, sale.date].filter(Boolean).join(" • ");
                           return `
                         <div class="flex justify-between text-sm">
-                            <span class="text-gray-400">${sale.condition} • ${sale.date}</span>
+                            <span class="text-gray-400">${meta || "eBay sold"}</span>
                             <span class="text-gray-200">${linkOpen}${priceDisplay}${linkClose}</span>
                         </div>
                     `;

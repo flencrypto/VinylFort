@@ -1123,7 +1123,7 @@ async function fetchAndShowEbaySoldInPanel() {
   const median = sorted[Math.floor(sorted.length / 2)]?.price;
   const rows = sorted.map((s) => `
     <div class="flex justify-between text-xs py-1 border-b border-gray-800">
-      <span class="text-gray-400">${s.condition} · ${s.date}</span>
+      <span class="text-gray-400">${[s.condition, s.date].filter(Boolean).join(" · ") || "eBay sold"}</span>
       <span class="text-gray-200 font-medium">£${parseFloat(s.price).toFixed(2)}</span>
     </div>`).join("");
 

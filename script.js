@@ -10413,3 +10413,50 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+
+// Fetch eBay sold prices via Google search (no Discogs quota cost)
+// Shared utility — available on both collection and deals pages via script.js
+async function fetchEbaySoldViaGoogle(artist, title, catalogueNumber) {
+  const cacheKey = `ebay_sold_${artist}_${title}_${catalogueNumber || ""}`.replace(/\s+/g, "_").toLowerCase();
+  const cached = localStorage.getItem(cacheKey);
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      if (parsed.ts && Date.now() - parsed.ts < 86400000) { // 24 hours
+        return parsed.results;
+      }
+    } catch (_) { /* ignore invalid cache */ }
+  }
+
+  try {
+    // Build query with optional catalogue number; use URLSearchParams to avoid double-encoding
+    const queryParts = [`site:ebay.co.uk "${artist}" "${title}" vinyl sold`];
+    if (catalogueNumber) queryParts.push(`"${catalogueNumber}"`);
+    const params = new URLSearchParams({ q: queryParts.join(" "), num: "20" });
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://www.google.com/search?${params.toString()}`)}`;
+    const response = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) }); // 10s timeout
+    if (!response.ok) return [];
+    const html = await response.text();
+
+    // Extract price snippets from Google result text — match £ only (eBay UK)
+    const results = [];
+    const snippetRegex = /ebay\.co\.uk[^"]*?["'][^<]*?£([\d]+(?:\.[\d]{1,2})?)/gi;
+    let match;
+    while ((match = snippetRegex.exec(html)) !== null && results.length < 10) {
+      const price = parseFloat(match[1]);
+      if (!isNaN(price) && price > 0.5 && price < 5000) { // sanity-check: plausible vinyl price range
+        results.push({ price, date: null, condition: null, source: "ebay_google" });
+      }
+    }
+
+    // Deduplicate by price
+    const seen = new Set();
+    const unique = results.filter((r) => { const k = r.price.toFixed(2); if (seen.has(k)) return false; seen.add(k); return true; });
+
+    localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), results: unique }));
+    return unique;
+  } catch (e) {
+    console.log("eBay/Google fetch failed:", e);
+    return [];
+  }
+}
