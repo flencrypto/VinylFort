@@ -79,7 +79,7 @@ contract VinylVaultNFT is IERC721Metadata {
     /// Contract owner (set to deployer; can update transferable via setter if needed).
     address public owner;
 
-    /// Auto-incrementing token counter.
+    /// Auto-incrementing token counter (uint256 — overflow not reachable in practice).
     uint256 private _nextTokenId;
 
     /// token ID → owner

@@ -394,7 +394,13 @@ function showBlockchainAuthModal() {
   const uncertifiedCount = totalRecords - certifiedCount;
 
   // --- Chain selection ---
+  // If an unrecognised chain is stored (e.g. a stale preference after a code update),
+  // _getActiveChainConfig already falls back to "eth" silently; clear the stale value
+  // so future renders start from the known default.
   const activeChain  = _getActiveChainConfig();
+  if (!CHAIN_CONFIGS[localStorage.getItem(CHAIN_PREFERENCE_KEY) || "eth"]) {
+    localStorage.removeItem(CHAIN_PREFERENCE_KEY);
+  }
   const activeService = activeChain.getService();
 
   const walletAvailable = activeService ? activeService.isWalletAvailable() : false;
@@ -775,14 +781,17 @@ function showBlockchainAuthModal() {
               if (!minted[tid]) minted[tid] = { mintDate: today, onChain: false };
               successCount++;
             } else {
-              // User rejection or on-chain failure — do NOT write a certificate
+              // Any other error (user rejection, TX revert, network failure) —
+              // do NOT write a certificate record.  Stop the batch so that a
+              // rejected prompt doesn't silently create false certificates for
+              // all remaining records.
               failCount++;
               const msg = err && err.message ? err.message : String(err);
               if (typeof showToast === "function") {
                 showToast(`Mint failed: ${msg.slice(0, 120)}`, "error");
               }
               aborted = true;
-              break; // Stop batch — user likely rejected all further prompts
+              break;
             }
           }
         }

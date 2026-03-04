@@ -25,7 +25,8 @@
 /* ------------------------------------------------------------------ */
 
 /**
- * Deployed MultiversX smart contract address (erd1…).
+ * Deployed MultiversX smart contract address (bech32 format, starts with "erd1").
+ * Example format: "erd1qqqqqqqqqqqqqpgq..."
  * @type {string|null}
  */
 const VINYLVAULT_MVRX_CONTRACT = null; // TODO: set after `mxpy contract deploy`

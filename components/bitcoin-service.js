@@ -146,7 +146,10 @@ const VinylVaultBitcoin = {
       const txid = await window.unisat.inscribeContent({
         content: contentJson,
         contentType: "application/json",
-        feeRate: 10, // sats/vByte — adjust based on current mempool
+        // Fee rate in sats/vByte.  Adjust based on current network conditions.
+        // Recommended: fetch live rates from https://mempool.space/api/v1/fees/recommended
+        // and use the "halfHourFee" or "fastestFee" field.
+        feeRate: 10,
       });
       const explorerUrl = `https://ordinals.com/inscription/${txid}i0`;
       return { txHash: txid, tokenId, explorerUrl };

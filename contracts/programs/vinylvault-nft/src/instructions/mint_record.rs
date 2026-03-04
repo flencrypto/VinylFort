@@ -129,6 +129,10 @@ pub fn handler(ctx: Context<MintRecordNft>, args: MintRecordArgs) -> Result<()> 
     cert.condition = args.condition;
     cert.metadata_uri = args.metadata_uri;
     cert.minted_at = Clock::get()?.unix_timestamp;
+    // NOTE: Solana's on-chain clock can be influenced by validators within a
+    // small bounded range (~±few seconds). For certificate timestamping this
+    // precision is sufficient; for applications requiring stricter guarantees
+    // an off-chain oracle (e.g. Chainlink) should be used instead.
     cert.bump = ctx.bumps.certificate;
 
     Ok(())

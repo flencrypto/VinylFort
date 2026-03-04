@@ -27,6 +27,7 @@
 /**
  * Deployed Anchor program address.
  * Replace with the value from `anchor deploy` output.
+ * Example format: "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
  * @type {string|null}
  */
 const VINYLVAULT_PROGRAM_ID = null; // TODO: set after `anchor deploy`
@@ -191,7 +192,8 @@ const VinylVaultSolana = {
     };
 
     // Anchor discriminator for `mint_record_nft` = sha256("global:mint_record_nft")[0..8].
-    // Pre-computed value — regenerate if the instruction name changes.
+    // Pre-computed value — to regenerate after any instruction rename, run:
+    //   node -e "const c=require('crypto');console.log(JSON.stringify([...c.createHash('sha256').update('global:mint_record_nft').digest().slice(0,8)]))"
     const discriminator = new Uint8Array([52, 200, 137, 194, 91, 73, 56, 222]);
 
     const parts = [
