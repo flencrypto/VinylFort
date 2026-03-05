@@ -270,6 +270,56 @@ function openVRPreview() {
 
 // Blockchain Authenticity
 
+/* ------------------------------------------------------------------ */
+/*  Multi-chain configuration                                           */
+/* ------------------------------------------------------------------ */
+
+const CHAIN_CONFIGS = {
+  eth: {
+    id: "eth",
+    label: "EVM / Polygon",
+    emoji: "🔷",
+    walletHint: '<a href="https://metamask.io" target="_blank" rel="noopener noreferrer" style="color:#a78bfa">MetaMask</a>',
+    getService() { return typeof VinylVaultWeb3 !== "undefined" ? VinylVaultWeb3 : null; },
+  },
+  sol: {
+    id: "sol",
+    label: "Solana",
+    emoji: "◎",
+    walletHint: '<a href="https://phantom.app" target="_blank" rel="noopener noreferrer" style="color:#a78bfa">Phantom</a>',
+    getService() { return typeof VinylVaultSolana !== "undefined" ? VinylVaultSolana : null; },
+  },
+  btc: {
+    id: "btc",
+    label: "Bitcoin",
+    emoji: "₿",
+    walletHint: '<a href="https://unisat.io" target="_blank" rel="noopener noreferrer" style="color:#a78bfa">Unisat</a>',
+    getService() { return typeof VinylVaultBitcoin !== "undefined" ? VinylVaultBitcoin : null; },
+  },
+  mvrx: {
+    id: "mvrx",
+    label: "MultiversX",
+    emoji: "🌐",
+    walletHint: '<a href="https://chromewebstore.google.com/detail/multiversx-defi-wallet" target="_blank" rel="noopener noreferrer" style="color:#a78bfa">xPortal Web</a>',
+    getService() { return typeof VinylVaultMultiversX !== "undefined" ? VinylVaultMultiversX : null; },
+  },
+};
+
+const CHAIN_PREFERENCE_KEY = "vv_chain_preference";
+
+/** Returns the currently active chain config based on localStorage preference. */
+function _getActiveChainConfig() {
+  const id = (localStorage.getItem(CHAIN_PREFERENCE_KEY) || "eth");
+  return CHAIN_CONFIGS[id] || CHAIN_CONFIGS.eth;
+}
+
+/** Returns the service instance for the currently selected chain, or null. */
+function _getActiveService() {
+  return _getActiveChainConfig().getService();
+}
+
+/* ------------------------------------------------------------------ */
+
 /**
  * Generate a deterministic certificate token ID from record metadata.
  * Produces a reproducible hex-like string without any crypto primitives.
@@ -343,26 +393,50 @@ function showBlockchainAuthModal() {
   ).length;
   const uncertifiedCount = totalRecords - certifiedCount;
 
-  // --- Wallet state snapshot for rendering ---
-  const w3 = typeof VinylVaultWeb3 !== "undefined" ? VinylVaultWeb3 : null;
-  const walletAvailable = w3 ? w3.isWalletAvailable() : false;
-  const walletConnected = w3 ? w3.isConnected() : false;
-  const walletAddress  = walletConnected ? w3.getShortAddress() : null;
-  const networkName    = walletConnected ? w3.getNetworkName()  : null;
+  // --- Chain selection ---
+  // If an unrecognised chain is stored (e.g. a stale preference after a code update),
+  // _getActiveChainConfig already falls back to "eth" silently; clear the stale value
+  // so future renders start from the known default.
+  const activeChain  = _getActiveChainConfig();
+  if (!CHAIN_CONFIGS[localStorage.getItem(CHAIN_PREFERENCE_KEY) || "eth"]) {
+    localStorage.removeItem(CHAIN_PREFERENCE_KEY);
+  }
+  const activeService = activeChain.getService();
 
-  // Wallet banner HTML
+  const walletAvailable = activeService ? activeService.isWalletAvailable() : false;
+  const walletConnected = activeService ? activeService.isConnected() : false;
+  const walletAddress   = walletConnected ? activeService.getShortAddress() : null;
+  const networkName     = walletConnected ? activeService.getNetworkName()  : null;
+
+  // --- Chain selector tabs ---
+  const chainTabsHtml = `
+    <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+      ${Object.values(CHAIN_CONFIGS).map((c) => {
+        const isActive = c.id === activeChain.id;
+        return `<button class="bc-chain-tab" data-chain="${escapeHtml(c.id)}"
+          style="display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;
+                 cursor:pointer;font-size:0.78em;font-weight:600;border:1px solid;
+                 ${isActive
+                   ? "background:rgba(124,58,237,0.3);border-color:rgba(124,58,237,0.7);color:#c4b5fd;"
+                   : "background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.12);color:#9ca3af;"
+                 }">
+          <span>${escapeHtml(c.emoji)}</span><span>${escapeHtml(c.label)}</span>
+        </button>`;
+      }).join("")}
+    </div>`;
+
+  // --- Wallet banner ---
   let walletBannerHtml;
-  if (!w3 || !walletAvailable) {
+  if (!activeService || !walletAvailable) {
     walletBannerHtml = `
       <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;
                   background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
                   border-radius:10px;margin-bottom:16px;font-size:0.82em">
-        <span style="font-size:1.4em;flex-shrink:0">🦊</span>
+        <span style="font-size:1.4em;flex-shrink:0">${escapeHtml(activeChain.emoji)}</span>
         <div style="flex:1">
-          <span style="color:#e2e8f0;font-weight:500">No wallet detected</span>
+          <span style="color:#e2e8f0;font-weight:500">No ${escapeHtml(activeChain.label)} wallet detected</span>
           <span style="color:#9ca3af;margin-left:6px">Install
-            <a href="https://metamask.io" target="_blank" rel="noopener noreferrer"
-               style="color:#a78bfa">MetaMask</a>
+            ${activeChain.walletHint}
             to enable on-chain minting. Records will still be certified locally.
           </span>
         </div>
@@ -376,7 +450,7 @@ function showBlockchainAuthModal() {
           <span style="font-size:1.4em;flex-shrink:0">🔗</span>
           <div>
             <span style="color:#e2e8f0;font-weight:500">Connect your wallet</span>
-            <span style="color:#9ca3af;margin-left:6px">to mint NFT certificates on Polygon</span>
+            <span style="color:#9ca3af;margin-left:6px">to mint NFT certificates on ${escapeHtml(activeChain.label)}</span>
           </div>
         </div>
         <button id="bcConnectWalletBtn"
@@ -484,6 +558,9 @@ function showBlockchainAuthModal() {
         <!-- Scrollable body -->
         <div style="padding:20px 24px;overflow-y:auto;flex:1">
 
+          <!-- Chain selector tabs -->
+          ${chainTabsHtml}
+
           <!-- Wallet connection banner -->
           ${walletBannerHtml}
 
@@ -554,19 +631,24 @@ function showBlockchainAuthModal() {
   }
 
   /**
-   * Attempt on-chain mint; fall back to local certificate on failure.
+   * Attempt on-chain mint; fall back to local certificate ONLY when the
+   * contract/program is not deployed yet (CONTRACT_NOT_CONFIGURED).
+   * User rejections and on-chain errors are surfaced to the user and do
+   * NOT create a false certificate record.
    * The btn is disabled during the async operation to prevent double-clicks.
    */
   async function mintRecordWithWallet(tokenId, recordIdx, btn) {
     if (btn) { btn.disabled = true; btn.textContent = "Minting…"; }
 
     try {
-      if (w3 && walletConnected) {
+      if (activeService && walletConnected) {
         const record = collection[recordIdx] || {};
-        const result = await w3.mintRecordNFT(tokenId, record);
+        const result = await activeService.mintRecordNFT(tokenId, record);
         minted[tokenId] = {
           mintDate: new Date().toISOString().slice(0, 10),
-          onChain: true,
+          // result.onChain may be explicitly false for signed-message fallbacks
+          // (e.g. Bitcoin Xverse proof); undefined/true means on-chain.
+          onChain: result.onChain !== false,
           txHash: result.txHash,
           explorerUrl: result.explorerUrl,
         };
@@ -583,17 +665,18 @@ function showBlockchainAuthModal() {
         showBlockchainAuthModal();
       }
     } catch (err) {
-      // User rejected or contract not configured — offer local fallback
-      const msg = err && err.message ? err.message : String(err);
       const isContractNotSet = err && err.code === "CONTRACT_NOT_CONFIGURED";
       if (isContractNotSet) {
-        // Silent local fallback when contract is not deployed yet
+        // Silent local fallback only when the contract is not deployed yet
         mintRecordLocal(tokenId);
         saveMinted();
         closeBlockchainAuthModal();
         showBlockchainAuthModal();
       } else {
+        // User rejected signature, TX reverted, or network error.
+        // Do NOT write a certificate — re-enable the button and report.
         if (btn) { btn.disabled = false; btn.textContent = "Mint"; }
+        const msg = err && err.message ? err.message : String(err);
         if (typeof showToast === "function") {
           showToast(`Mint failed: ${msg.slice(0, 120)}`, "error");
         }
@@ -606,14 +689,24 @@ function showBlockchainAuthModal() {
     saveMinted();
   }
 
+  // Chain selector tabs
+  modal.addEventListener("click", (e) => {
+    const tab = e.target.closest(".bc-chain-tab");
+    if (tab && tab.dataset.chain) {
+      localStorage.setItem(CHAIN_PREFERENCE_KEY, tab.dataset.chain);
+      closeBlockchainAuthModal();
+      showBlockchainAuthModal();
+    }
+  });
+
   // Wallet connect button
   const connectBtn = document.getElementById("bcConnectWalletBtn");
-  if (connectBtn && w3) {
+  if (connectBtn && activeService) {
     connectBtn.addEventListener("click", async () => {
       connectBtn.disabled = true;
       connectBtn.textContent = "Connecting…";
       try {
-        await w3.connectWallet();
+        await activeService.connectWallet();
         closeBlockchainAuthModal();
         showBlockchainAuthModal();
       } catch (err) {
@@ -629,9 +722,9 @@ function showBlockchainAuthModal() {
 
   // Wallet disconnect button
   const disconnectBtn = document.getElementById("bcDisconnectWalletBtn");
-  if (disconnectBtn && w3) {
+  if (disconnectBtn && activeService) {
     disconnectBtn.addEventListener("click", () => {
-      w3.disconnectWallet();
+      activeService.disconnectWallet();
       closeBlockchainAuthModal();
       showBlockchainAuthModal();
     });
@@ -657,8 +750,7 @@ function showBlockchainAuthModal() {
     });
   }
 
-  // Mint-all button — uses local certificates (batch on-chain mint is intentionally not offered
-  // to avoid accidentally sending many transactions without per-record confirmation)
+  // Mint-all button
   const mintAllBtn = document.getElementById("bcMintAllBtn");
   if (mintAllBtn) {
     mintAllBtn.addEventListener("click", async () => {
@@ -666,35 +758,62 @@ function showBlockchainAuthModal() {
       mintAllBtn.textContent = "Minting…";
       const today = new Date().toISOString().slice(0, 10);
 
-      if (w3 && walletConnected) {
-        // On-chain: mint one by one
+      if (activeService && walletConnected) {
+        // On-chain: mint one by one, stopping on any non-CONTRACT_NOT_CONFIGURED error.
         let successCount = 0;
+        let failCount = 0;
+        let aborted = false;
+
         for (const r of collection) {
           const tid = generateCertTokenId(r);
           if (minted[tid]) continue;
           try {
-            const result = await w3.mintRecordNFT(tid, r);
+            const result = await activeService.mintRecordNFT(tid, r);
             minted[tid] = {
               mintDate: today,
-              onChain: true,
+              // result.onChain may be explicitly false for signed-message fallbacks
+              // (e.g. Bitcoin Xverse proof); undefined/true means on-chain.
+              onChain: result.onChain !== false,
               txHash: result.txHash,
               explorerUrl: result.explorerUrl,
             };
             successCount++;
-          } catch (_err) {
-            // If contract not set, fall back to local for this record
-            if (!minted[tid]) minted[tid] = { mintDate: today, onChain: false };
-            successCount++;
+          } catch (err) {
+            const isContractNotSet = err && err.code === "CONTRACT_NOT_CONFIGURED";
+            if (isContractNotSet) {
+              // Contract not deployed yet — silent local fallback only
+              if (!minted[tid]) minted[tid] = { mintDate: today, onChain: false };
+              successCount++;
+            } else {
+              // Any other error (user rejection, TX revert, network failure) —
+              // do NOT write a certificate record.  Stop the batch so that a
+              // rejected prompt doesn't silently create false certificates for
+              // all remaining records.
+              failCount++;
+              const msg = err && err.message ? err.message : String(err);
+              if (typeof showToast === "function") {
+                showToast(`Mint failed: ${msg.slice(0, 120)}`, "error");
+              }
+              aborted = true;
+              break;
+            }
           }
         }
+
         saveMinted();
         closeBlockchainAuthModal();
         showBlockchainAuthModal();
-        if (typeof showToast === "function") {
-          showToast(`Minted ${successCount} record${successCount !== 1 ? "s" : ""}`, "success");
+
+        if (!aborted && typeof showToast === "function") {
+          showToast(
+            `Minted ${successCount} record${successCount !== 1 ? "s" : ""}`,
+            "success"
+          );
+        } else if (aborted && successCount > 0 && typeof showToast === "function") {
+          showToast(`Minted ${successCount}, failed ${failCount}`, "warning");
         }
       } else {
-        // Local certificates
+        // Local certificates (no wallet connected)
         collection.forEach((r) => {
           const tid = generateCertTokenId(r);
           if (!minted[tid]) minted[tid] = { mintDate: today, onChain: false };
