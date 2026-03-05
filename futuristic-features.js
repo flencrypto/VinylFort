@@ -277,7 +277,7 @@ function openVRPreview() {
 const CHAIN_CONFIGS = {
   eth: {
     id: "eth",
-    label: "Ethereum",
+    label: "EVM / Polygon",
     emoji: "🔷",
     walletHint: '<a href="https://metamask.io" target="_blank" rel="noopener noreferrer" style="color:#a78bfa">MetaMask</a>',
     getService() { return typeof VinylVaultWeb3 !== "undefined" ? VinylVaultWeb3 : null; },
@@ -646,7 +646,9 @@ function showBlockchainAuthModal() {
         const result = await activeService.mintRecordNFT(tokenId, record);
         minted[tokenId] = {
           mintDate: new Date().toISOString().slice(0, 10),
-          onChain: true,
+          // result.onChain may be explicitly false for signed-message fallbacks
+          // (e.g. Bitcoin Xverse proof); undefined/true means on-chain.
+          onChain: result.onChain !== false,
           txHash: result.txHash,
           explorerUrl: result.explorerUrl,
         };
@@ -769,7 +771,9 @@ function showBlockchainAuthModal() {
             const result = await activeService.mintRecordNFT(tid, r);
             minted[tid] = {
               mintDate: today,
-              onChain: true,
+              // result.onChain may be explicitly false for signed-message fallbacks
+              // (e.g. Bitcoin Xverse proof); undefined/true means on-chain.
+              onChain: result.onChain !== false,
               txHash: result.txHash,
               explorerUrl: result.explorerUrl,
             };

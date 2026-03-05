@@ -176,6 +176,9 @@ const VinylVaultBitcoin = {
       txHash: signature,
       tokenId,
       explorerUrl: "",
+      // Not a true on-chain inscription — the UI will persist this as a local
+      // (off-chain) certificate rather than "On-Chain ⛓️".
+      onChain: false,
       note: "Signed locally — use a Unisat wallet with inscription support for full on-chain recording.",
     };
   },

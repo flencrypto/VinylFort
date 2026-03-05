@@ -76,7 +76,7 @@ contract VinylVaultNFT is IERC721Metadata {
     /// When false the contract is "soul-bound": only mint and burn are allowed.
     bool public immutable transferable;
 
-    /// Contract owner (set to deployer; can update transferable via setter if needed).
+    /// Contract owner (set to deployer). Note: `transferable` is fixed at deployment.
     address public owner;
 
     /// Auto-incrementing token counter (uint256 — overflow not reachable in practice).
@@ -107,7 +107,7 @@ contract VinylVaultNFT is IERC721Metadata {
     event CertificateMinted(
         address indexed minter,
         uint256 indexed tokenId,
-        string  vinylTokenId
+        string  uri
     );
 
     /// Emitted when a certificate is revoked (burned).
@@ -214,16 +214,22 @@ contract VinylVaultNFT is IERC721Metadata {
      * Function signature is intentionally compatible with the ABI in
      * components/web3-service.js (`safeMint(address,string)`).
      *
-     * @param to            Recipient address (typically msg.sender).
+     * Minting to a different address is blocked: the `to` parameter must equal
+     * `msg.sender`.  This prevents a caller from forcing certificates into other
+     * wallets without consent and ensures the original minter and token owner are
+     * always the same person at mint time.
+     *
+     * @param to            Recipient address — must equal msg.sender.
      * @param uri           JSON metadata URI (data URI or IPFS/Arweave URL).
      * @return newTokenId   The minted ERC-721 token ID.
      */
     function safeMint(address to, string memory uri) external returns (uint256 newTokenId) {
+        require(to == msg.sender, "VinylVault: may only mint to your own address");
         newTokenId = _nextTokenId++;
         _mint(to, newTokenId);
         _tokenURIs[newTokenId] = uri;
-        originalMinter[newTokenId] = msg.sender;
-        emit CertificateMinted(msg.sender, newTokenId, uri);
+        originalMinter[newTokenId] = to;
+        emit CertificateMinted(to, newTokenId, uri);
     }
 
     /**

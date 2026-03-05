@@ -897,6 +897,15 @@
     <script src="components/ai-chat.js"></script>
     <!-- Futuristic Features -->
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.umd.min.js"></script>
+    <!-- @solana/web3.js IIFE build — exposes window.solanaWeb3 -->
+    <script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.95.4/lib/index.iife.min.js"></script>
+    <script>
+      // @solana/web3.js IIFE build exposes solanaWeb3 as a module-level export
+      // rather than window.solanaWeb3 in some CDN versions.  Normalise it here.
+      if (typeof solanaWeb3 !== "undefined" && !window.solanaWeb3) {
+        window.solanaWeb3 = solanaWeb3;
+      }
+    </script>
     <script src="components/web3-service.js"></script>
     <script src="components/solana-service.js"></script>
     <script src="components/bitcoin-service.js"></script>

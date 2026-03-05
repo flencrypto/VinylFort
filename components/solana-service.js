@@ -163,24 +163,12 @@ const VinylVaultSolana = {
       await this.connectWallet();
     }
 
-    const { PublicKey, SystemProgram, Transaction, Keypair } = window.solanaWeb3;
+    const { PublicKey, SystemProgram, Transaction, TransactionInstruction, Keypair } = window.solanaWeb3;
 
-    // Build the metadata URI stored alongside the certificate.
-    const metaObj = {
-      name: `${metadata.artist || "Unknown"} — ${metadata.title || "Unknown"}`,
-      description: "VinylVault authenticity certificate for this vinyl record.",
-      attributes: [
-        { trait_type: "Artist",    value: metadata.artist    || "" },
-        { trait_type: "Title",     value: metadata.title     || "" },
-        { trait_type: "Year",      value: metadata.year      || "" },
-        { trait_type: "Cat No",    value: metadata.catno     || "" },
-        { trait_type: "Condition", value: metadata.condition || "" },
-        { trait_type: "Token ID",  value: tokenId },
-      ],
-    };
-    const metadataUri =
-      "data:application/json;base64," +
-      btoa(unescape(encodeURIComponent(JSON.stringify(metaObj))));
+    // All record metadata is stored in the on-chain RecordCertificate PDA, so
+    // no off-chain URI is required.  The on-chain constraint is max_len(200) for
+    // metadata_uri; passing an empty string keeps us safely within that limit.
+    const metadataUri = "";
 
     // Encode instruction data (Borsh-style: length-prefixed strings).
     const enc = new TextEncoder();
@@ -214,23 +202,52 @@ const VinylVaultSolana = {
     // Fresh keypair for the mint account (caller co-signs).
     const mintKp = Keypair.generate();
     const programId = new PublicKey(VINYLVAULT_PROGRAM_ID);
+    const authority = new PublicKey(_solState.account);
 
+    // Well-known Solana program addresses.
+    const TOKEN_PROGRAM_ID = new PublicKey(
+      "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+    );
+    const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
+      "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+    );
+    const RENT_SYSVAR_ID = new PublicKey(
+      "SysvarRent111111111111111111111111111111111"
+    );
+
+    // Derive certificate PDA: seeds = ["record-cert", mint.key()].
     const [certPda] = await PublicKey.findProgramAddress(
       [Buffer.from("record-cert"), mintKp.publicKey.toBuffer()],
       programId
     );
 
-    const authority = new PublicKey(_solState.account);
-    const instruction = {
+    // Derive the associated token account (ATA) for the authority and new mint.
+    const [tokenAccount] = await PublicKey.findProgramAddress(
+      [
+        authority.toBuffer(),
+        TOKEN_PROGRAM_ID.toBuffer(),
+        mintKp.publicKey.toBuffer(),
+      ],
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    // Build a proper TransactionInstruction matching the Anchor MintRecordNft
+    // accounts struct order: authority, mint, token_account, certificate,
+    // system_program, token_program, associated_token_program, rent.
+    const instruction = new TransactionInstruction({
       programId,
       keys: [
-        { pubkey: authority,                isSigner: true,  isWritable: true  },
-        { pubkey: mintKp.publicKey,         isSigner: true,  isWritable: true  },
-        { pubkey: certPda,                  isSigner: false, isWritable: true  },
-        { pubkey: SystemProgram.programId,  isSigner: false, isWritable: false },
+        { pubkey: authority,                    isSigner: true,  isWritable: true  },
+        { pubkey: mintKp.publicKey,             isSigner: true,  isWritable: true  },
+        { pubkey: tokenAccount,                 isSigner: false, isWritable: true  },
+        { pubkey: certPda,                      isSigner: false, isWritable: true  },
+        { pubkey: SystemProgram.programId,      isSigner: false, isWritable: false },
+        { pubkey: TOKEN_PROGRAM_ID,             isSigner: false, isWritable: false },
+        { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID,  isSigner: false, isWritable: false },
+        { pubkey: RENT_SYSVAR_ID,               isSigner: false, isWritable: false },
       ],
-      data,
-    };
+      data: Buffer.from(data),
+    });
 
     const { blockhash } = await _solState.connection.getLatestBlockhash();
     const tx = new Transaction({ recentBlockhash: blockhash, feePayer: authority });
