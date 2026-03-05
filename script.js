@@ -10418,15 +10418,25 @@ document.addEventListener("DOMContentLoaded", () => {
 // Shared utility — available on both collection and deals pages via script.js
 async function fetchEbaySoldViaGoogle(artist, title, catalogueNumber) {
   const cacheKey = `ebay_sold_${artist}_${title}_${catalogueNumber || ""}`.replace(/\s+/g, "_").toLowerCase();
-  const cached = localStorage.getItem(cacheKey);
-  if (cached) {
-    try {
-      const parsed = JSON.parse(cached);
-      if (parsed.ts && Date.now() - parsed.ts < 86400000) { // 24 hours
-        return parsed.results;
-      }
-    } catch (_) { /* ignore invalid cache */ }
-  }
+
+  // Guard localStorage read — may throw SecurityError in restricted browser or privacy configurations
+  try {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (
+          parsed &&
+          typeof parsed === "object" &&
+          typeof parsed.ts === "number" &&
+          Array.isArray(parsed.results) &&
+          Date.now() - parsed.ts < 86400000 // 24 hours
+        ) {
+          return parsed.results.filter((r) => r && typeof r === "object");
+        }
+      } catch (_) { /* ignore invalid cache */ }
+    }
+  } catch (_) { /* localStorage unavailable — proceed without cache */ }
 
   try {
     // Build query with optional catalogue number; use URLSearchParams to avoid double-encoding
@@ -10453,7 +10463,10 @@ async function fetchEbaySoldViaGoogle(artist, title, catalogueNumber) {
     const seen = new Set();
     const unique = results.filter((r) => { const k = r.price.toFixed(2); if (seen.has(k)) return false; seen.add(k); return true; });
 
-    localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), results: unique }));
+    // Guard localStorage write — if caching fails due to quota or security errors, the fetched results are still returned to the caller
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), results: unique }));
+    } catch (_) { /* ignore cache write failure */ }
     return unique;
   } catch (e) {
     console.log("eBay/Google fetch failed:", e);
