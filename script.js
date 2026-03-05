@@ -10425,8 +10425,14 @@ async function fetchEbaySoldViaGoogle(artist, title, catalogueNumber) {
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
-        if (parsed.ts && Date.now() - parsed.ts < 86400000) { // 24 hours
-          return parsed.results;
+        if (
+          parsed &&
+          typeof parsed === "object" &&
+          typeof parsed.ts === "number" &&
+          Array.isArray(parsed.results) &&
+          Date.now() - parsed.ts < 86400000 // 24 hours
+        ) {
+          return parsed.results.filter((r) => r && typeof r === "object");
         }
       } catch (_) { /* ignore invalid cache */ }
     }
