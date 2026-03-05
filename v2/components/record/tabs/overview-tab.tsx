@@ -1,8 +1,8 @@
 import { Card } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import type { RecordProps } from "@/components/record/types"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default function OverviewTab({ record }: { record: any }) {
+export default function OverviewTab({ record }: { record: RecordProps }) {
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
       <Card className="bg-vv-panel border-vv-border p-4">

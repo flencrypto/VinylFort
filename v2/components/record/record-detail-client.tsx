@@ -14,20 +14,7 @@ import ConditionTab from "@/components/record/tabs/condition-tab"
 import ValueTab from "@/components/record/tabs/value-tab"
 import MediaTab from "@/components/record/tabs/media-tab"
 import ActivityTab from "@/components/record/tabs/activity-tab"
-
-type RecordProps = {
-  id: string
-  artist: string
-  title: string
-  label?: string
-  cat?: string
-  year?: string
-  country?: string
-  format?: string
-  condition?: { media?: string; sleeve?: string }
-  variantConfidence?: "High" | "Medium" | "Low"
-  valuationConfidence?: "High" | "Medium" | "Low"
-}
+import type { RecordProps } from "@/components/record/types"
 
 export default function RecordDetailClient({ record }: { record: RecordProps }) {
   return (
