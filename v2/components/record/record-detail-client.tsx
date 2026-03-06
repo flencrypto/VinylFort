@@ -8,6 +8,8 @@ import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
 import { Camera, Download, Pencil } from "lucide-react"
 
+import type { IntegrationStatus } from "@/lib/integrations/requirements"
+
 import OverviewTab from "@/components/record/tabs/overview-tab"
 import VariantTab from "@/components/record/tabs/variant-tab"
 import ConditionTab from "@/components/record/tabs/condition-tab"
@@ -16,7 +18,12 @@ import MediaTab from "@/components/record/tabs/media-tab"
 import ActivityTab from "@/components/record/tabs/activity-tab"
 import type { RecordProps } from "@/components/record/types"
 
-export default function RecordDetailClient({ record }: { record: RecordProps }) {
+interface RecordDetailClientProps {
+  record: RecordProps
+  integrationStatuses?: Record<string, IntegrationStatus>
+}
+
+export default function RecordDetailClient({ record, integrationStatuses = {} }: RecordDetailClientProps) {
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -94,7 +101,7 @@ export default function RecordDetailClient({ record }: { record: RecordProps }) 
         </TabsContent>
 
         <TabsContent value="variant">
-          <VariantTab record={record} />
+          <VariantTab record={record} integrationStatuses={integrationStatuses} />
         </TabsContent>
 
         <TabsContent value="condition">
@@ -102,7 +109,7 @@ export default function RecordDetailClient({ record }: { record: RecordProps }) 
         </TabsContent>
 
         <TabsContent value="value">
-          <ValueTab record={record} />
+          <ValueTab record={record} integrationStatuses={integrationStatuses} />
         </TabsContent>
 
         <TabsContent value="media">

@@ -12,6 +12,7 @@ import {
   FileText,
   Settings,
   PlugZap,
+  Wrench,
 } from "lucide-react"
 
 const nav = [
@@ -22,6 +23,7 @@ const nav = [
   { href: "/valuation", label: "Valuation", icon: BarChart3 },
   { href: "/reports", label: "Reports", icon: FileText },
   { href: "/integrations", label: "Integrations", icon: PlugZap },
+  { href: "/setup", label: "Setup", icon: Wrench },
   { href: "/settings", label: "Settings", icon: Settings },
 ]
 

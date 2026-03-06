@@ -1,7 +1,14 @@
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { getAllIntegrationStatuses } from "@/lib/integrations/server"
+import { getIntegration } from "@/lib/integrations/requirements"
+import { AddGatedCards } from "@/components/setup/add-gated-cards"
 
-export default function AddPage() {
+export default async function AddPage() {
+  const statuses = getAllIntegrationStatuses()
+  const openaiReq = getIntegration("openai")!
+  const openaiStatus = statuses["openai"]!
+
   return (
     <div className="space-y-5 max-w-2xl">
       <div>
@@ -9,19 +16,7 @@ export default function AddPage() {
         <p className="text-sm text-vv-text/60 mt-1">Add records via quick form, barcode, or photos.</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        {[
-          { title: "Quick Add", desc: "Fill in artist, title, and condition manually.", icon: "✍️" },
-          { title: "Barcode", desc: "Enter a barcode to find candidate pressings.", icon: "🔍" },
-          { title: "Photos", desc: "Upload label/runout photos and attach to a record.", icon: "📷" },
-        ].map((t) => (
-          <Card key={t.title} className="bg-vv-panel border-vv-border p-4 hover:bg-vv-card transition-colors cursor-pointer">
-            <div className="text-2xl mb-2">{t.icon}</div>
-            <div className="font-semibold">{t.title}</div>
-            <div className="text-sm text-vv-text/65 mt-1">{t.desc}</div>
-          </Card>
-        ))}
-      </div>
+      <AddGatedCards openaiIntegration={openaiReq} openaiStatus={openaiStatus} />
 
       <Card className="bg-vv-panel border-vv-border p-4">
         <div className="font-semibold">Drafts</div>

@@ -3,7 +3,15 @@ const jsFiles = ["**/*.js", "**/*.cjs", "**/*.mjs"];
 const securityPlugin = require("./tools/eslint-plugin-security");
 module.exports = [
   {
-    ignores: ["node_modules/**", "dist/**", "coverage/**"],
+    ignores: [
+      "node_modules/**",
+      "dist/**",
+      "coverage/**",
+      // v2 is a Next.js app with its own eslint config (next lint).
+      // Exclude it from the root vanilla-JS linter to avoid false positives
+      // from .next build artifacts and ESM-only config files.
+      "v2/**",
+    ],
   },
   {
     files: jsFiles,

@@ -1,0 +1,170 @@
+REQUIRED_KEYS_AND_LOGINS.txt
+Generated: 2026-03-06
+
+This file documents every external credential, API key, and login required
+to run VinylVault (both the v1 static frontend and the v2 Next.js app).
+All keys are server-only — never commit them or store them client-side.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HOW TO ADD KEYS (v2 Next.js app)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create the file  v2/.env.local  (git-ignored) and paste your keys:
+
+  # v2/.env.local
+  DISCOGS_USER_TOKEN=your-token-here
+  EBAY_CLIENT_ID=your-client-id
+  EBAY_CLIENT_SECRET=your-client-secret
+  OPENAI_API_KEY=sk-...
+  # Optional
+  DEEPSEEK_API_KEY=...
+  EBAY_USER_TOKEN=...
+  EBAY_ACCESS_TOKEN=...
+
+Restart  pnpm dev  (inside v2/) after editing .env.local.
+
+For v1 (static HTML), keys are currently entered via the Settings page UI
+and stored in localStorage (see THREATMODEL.md for risk notes).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. DISCOGS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Feature unlocked:
+  Import collection from Discogs, sync wantlist, fetch pressing comp data,
+  identify variants (Variant Resolver), power the Valuation page.
+
+Required env var (v2):
+  DISCOGS_USER_TOKEN
+
+OAuth required:  No (personal access token is sufficient for read access)
+
+Where to get it:
+  1. Sign in to https://www.discogs.com
+  2. Settings → Developers
+     https://www.discogs.com/settings/developers
+  3. Click "Generate new token"
+  4. Copy the token and set DISCOGS_USER_TOKEN=<token> in v2/.env.local
+
+Official docs:
+  https://www.discogs.com/developers/#page:authentication,header:authentication-discogs-auth-flow
+
+Dependent UI actions (v2):
+  - /record/[id]  →  "Find candidates" button (Variant Resolver tab)
+  - /valuation    →  "Connect Discogs" button, collection comp range
+  - /integrations →  Discogs status card
+  - /setup        →  Setup instructions
+
+Notes:
+  Server-only.  Token never reaches the browser.
+  For write access (Wantlist sync) an OAuth flow would also be required.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. EBAY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Feature unlocked:
+  Pull sold listings for valuation comps (Browse API).
+  (Optional) Auto-buy orders, inventory/listing management.
+
+Required env vars (v2):
+  EBAY_CLIENT_ID       — App ID from eBay developer portal
+  EBAY_CLIENT_SECRET   — Cert ID from eBay developer portal
+
+Optional env vars (v2):
+  EBAY_USER_TOKEN      — User access token (Authorization Code flow)
+                         Required for: order placement, buy.order scope
+  EBAY_ACCESS_TOKEN    — Access token for sell.inventory.mapping scope
+                         Required for: Listing Preview Generator
+
+OAuth required:
+  No, for Browse API (client credentials flow is sufficient).
+  Yes, for order/inventory endpoints (Authorization Code flow required).
+
+Where to get it:
+  1. Create a developer account at https://developer.ebay.com
+  2. Sign in → My Account → Application Keys
+     https://developer.ebay.com/my/keys
+  3. Create a new Keyset for Production
+  4. Copy:
+       App ID  → EBAY_CLIENT_ID
+       Cert ID → EBAY_CLIENT_SECRET
+  5. For user tokens, complete the Authorization Code OAuth flow:
+     https://developer.ebay.com/api-docs/static/oauth-authorization-code-grant.html
+     Scope for buy.order:   https://api.ebay.com/oauth/api_scope/buy.order
+     Scope for inventory:   https://api.ebay.com/oauth/api_scope/sell.inventory.mapping
+
+Official docs:
+  https://developer.ebay.com/api-docs/buy/browse/overview.html
+  https://developer.ebay.com/api-docs/static/oauth-client-credentials-grant.html
+
+Dependent UI actions (v2):
+  - /valuation    →  "Connect eBay" button, eBay sold comps
+  - /integrations →  eBay status card
+  - /setup        →  Setup instructions
+
+Notes:
+  Server-only.  Keys never reach the browser.
+  Production environment only — Sandbox is not supported for all APIs.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. OPENAI / AI PROVIDER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Feature unlocked:
+  AI-powered OCR for runout / label photos, pressing identification from
+  barcode, market analysis generation (v1 frontend + v2 Add page).
+
+Required env var (v2):
+  OPENAI_API_KEY       — OpenAI secret key (sk-...)
+
+Optional alternative (v2):
+  DEEPSEEK_API_KEY     — DeepSeek API key; substitutes for OPENAI_API_KEY
+                         for all OCR and analysis tasks.
+
+OAuth required:  No
+
+Where to get OpenAI key:
+  1. Sign in to https://platform.openai.com
+  2. API Keys: https://platform.openai.com/api-keys
+  3. Create new secret key
+  4. Set OPENAI_API_KEY=sk-... in v2/.env.local
+
+Where to get DeepSeek key (alternative):
+  1. Sign in to https://platform.deepseek.com
+  2. API Keys: https://platform.deepseek.com/api_keys
+  3. Create new key
+  4. Set DEEPSEEK_API_KEY=... in v2/.env.local
+
+Dependent UI actions (v2):
+  - /add  →  "Barcode" card (barcode lookup + AI identification)
+  - /add  →  "Photos" card (OCR for label / runout text)
+  - /setup →  Setup instructions
+
+v1 (static frontend) notes:
+  In the v1 app, the API key is entered in the browser Settings page and
+  stored in localStorage.  This is a known risk (see docs/CODE_REVIEW.md,
+  finding #2).  The v2 app routes all AI calls through server-only API
+  routes, eliminating the client-side key exposure.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GATING BEHAVIOUR (v2 Next.js app)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+When a user clicks any CTA that requires an unconfigured integration:
+  • A modal dialog appears explaining what is missing and why.
+  • The modal shows the exact env var name(s) needed.
+  • Step-by-step "Where to get it" instructions are shown.
+  • A "Get credentials ↗" button links to the official developer portal.
+  • A "View all requirements →" button navigates to /setup.
+
+The /setup page (accessible from sidebar and any gate dialog) lists all
+integrations with live status badges (Configured / Missing), env var
+names, setup steps, and links to official portals.
+
+The server endpoint  GET /api/setup/status  returns which integrations are
+configured as JSON booleans — it never returns secret values.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+END OF FILE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
