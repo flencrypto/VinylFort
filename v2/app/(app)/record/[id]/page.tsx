@@ -1,4 +1,5 @@
 import RecordDetailClient from "@/components/record/record-detail-client"
+import { getAllIntegrationStatuses } from "@/lib/integrations/server"
 
 export default async function RecordDetailPage({
   params,
@@ -22,5 +23,7 @@ export default async function RecordDetailPage({
     valuationConfidence: "Low" as const,
   }
 
-  return <RecordDetailClient record={record} />
+  const integrationStatuses = getAllIntegrationStatuses()
+
+  return <RecordDetailClient record={record} integrationStatuses={integrationStatuses} />
 }

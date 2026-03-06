@@ -26,6 +26,8 @@ const DEAL_SCANNER_DEFAULTS = {
   minCondition: "VG+",
 };
 
+const CONDITION_ORDER = ["P", "F", "G", "G+", "VG", "VG+", "NM", "M"];
+
 class DealScanner {
   constructor() {
     this._timer = null;
@@ -56,8 +58,7 @@ class DealScanner {
   }
 
   _getConditionRank(condition) {
-    const order = ["P", "F", "G", "G+", "VG", "VG+", "NM", "M"];
-    const idx = order.indexOf((condition || "").toUpperCase());
+    const idx = CONDITION_ORDER.indexOf((condition || "").toUpperCase());
     return idx === -1 ? 0 : idx;
   }
 

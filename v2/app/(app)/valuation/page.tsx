@@ -1,7 +1,16 @@
 import { Card } from "@/components/ui/card"
 import Link from "next/link"
+import { getAllIntegrationStatuses } from "@/lib/integrations/server"
+import { getIntegration } from "@/lib/integrations/requirements"
+import { ValuationGatedContent } from "@/components/setup/valuation-gated-content"
 
-export default function ValuationPage() {
+export default async function ValuationPage() {
+  const statuses = getAllIntegrationStatuses()
+  const discogsReq = getIntegration("discogs")!
+  const discogsStatus = statuses["discogs"]!
+  const ebayReq = getIntegration("ebay")!
+  const ebayStatus = statuses["ebay"]!
+
   return (
     <div className="space-y-5">
       <div>
@@ -12,10 +21,12 @@ export default function ValuationPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card className="bg-vv-panel border-vv-border p-4 sm:col-span-2 lg:col-span-2">
           <div className="font-semibold">Collection range</div>
-          <div className="mt-2 text-3xl font-bold text-vv-text">—</div>
-          <div className="text-sm text-vv-text/60 mt-1">
-            Connect Discogs comps data to compute a range.
-          </div>
+          <ValuationGatedContent
+            discogsIntegration={discogsReq}
+            discogsStatus={discogsStatus}
+            ebayIntegration={ebayReq}
+            ebayStatus={ebayStatus}
+          />
         </Card>
 
         <Card className="bg-vv-panel border-vv-border p-4">

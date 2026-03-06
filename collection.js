@@ -3,6 +3,7 @@ let collection = [];
 let pendingImports = [];
 let currentVerifyIndex = 0;
 let verifyPhotos = [];
+let _filterDebounceTimer = null;
 
 // Initialize
 document.addEventListener("DOMContentLoaded", () => {
@@ -263,11 +264,10 @@ function startPhotoVerification() {
     // All done - refresh final state
     renderCollection();
     updatePortfolioStats();
+    const now = Date.now();
     const importedCount = collection.filter((r) => {
       // Count recently added records (within last minute)
-      const added = new Date(r.dateAdded);
-      const now = new Date();
-      return now - added < 60000;
+      return now - new Date(r.dateAdded).getTime() < 60000;
     }).length;
     showToast(
       `Import complete! ${importedCount} records added to your collection.`,
@@ -894,8 +894,7 @@ function renderCollection() {
   }
 
   grid.innerHTML = filtered
-    .map((record, idx) => {
-      const originalIdx = collection.indexOf(record);
+    .map(({ record, originalIdx }) => {
       const profitClass =
         (record.profitPotential || 0) >= 0 ? "text-profit" : "text-loss";
       const profitIcon =
@@ -1023,31 +1022,42 @@ function getFilteredCollection() {
     .value.toLowerCase();
   const status = document.getElementById("statusFilter").value;
 
-  let filtered = collection.filter((r) => {
+  // Build indexed list once; pre-lowercase string fields used for search
+  // and pre-compute the dateAdded timestamp for sort comparisons
+  const indexed = collection.map((record, idx) => ({
+    record,
+    originalIdx: idx,
+    artistLower: (record.artist || "").toLowerCase(),
+    titleLower: (record.title || "").toLowerCase(),
+    catLower: (record.catalogueNumber || "").toLowerCase(),
+    dateTs: record.dateAdded ? new Date(record.dateAdded).getTime() : 0,
+  }));
+
+  let filtered = indexed.filter(({ record, artistLower, titleLower, catLower }) => {
     const matchesSearch =
       !search ||
-      r.artist.toLowerCase().includes(search) ||
-      r.title.toLowerCase().includes(search) ||
-      (r.catalogueNumber && r.catalogueNumber.toLowerCase().includes(search));
-    const matchesStatus = status === "all" || r.status === status;
+      artistLower.includes(search) ||
+      titleLower.includes(search) ||
+      catLower.includes(search);
+    const matchesStatus = status === "all" || record.status === status;
     return matchesSearch && matchesStatus;
   });
 
-  // Sort
+  // Sort using pre-computed fields — no Date construction inside the comparator
   const sortBy = document.getElementById("sortBy").value;
   filtered.sort((a, b) => {
     switch (sortBy) {
       case "artist":
-        return a.artist.localeCompare(b.artist);
+        return a.artistLower.localeCompare(b.artistLower);
       case "purchasePrice":
-        return (b.purchasePrice || 0) - (a.purchasePrice || 0);
+        return (b.record.purchasePrice || 0) - (a.record.purchasePrice || 0);
       case "estValue":
-        return (b.estimatedValue || 0) - (a.estimatedValue || 0);
+        return (b.record.estimatedValue || 0) - (a.record.estimatedValue || 0);
       case "profit":
-        return (b.profitPotential || 0) - (a.profitPotential || 0);
+        return (b.record.profitPotential || 0) - (a.record.profitPotential || 0);
       case "dateAdded":
       default:
-        return new Date(b.dateAdded) - new Date(a.dateAdded);
+        return b.dateTs - a.dateTs;
     }
   });
 
@@ -1055,27 +1065,25 @@ function getFilteredCollection() {
 }
 
 function filterCollection() {
-  renderCollection();
+  clearTimeout(_filterDebounceTimer);
+  _filterDebounceTimer = setTimeout(renderCollection, 150);
 }
 
 function sortCollection() {
   renderCollection();
 }
 function updatePortfolioStats() {
-  // Calculate stats from collection
+  // Calculate stats from collection in a single pass
   const totalRecords = collection.length;
-  const totalInvested = collection.reduce(
-    (sum, r) => sum + (parseFloat(r.purchasePrice) || 0),
-    0,
-  );
-  const totalValue = collection.reduce(
-    (sum, r) =>
-      sum +
-      (parseFloat(r.estimatedValue) ||
-        parseFloat(r.csvMarketData?.median) ||
-        0),
-    0,
-  );
+  let totalInvested = 0;
+  let totalValue = 0;
+  for (const r of collection) {
+    totalInvested += parseFloat(r.purchasePrice) || 0;
+    totalValue +=
+      parseFloat(r.estimatedValue) ||
+      parseFloat(r.csvMarketData?.median) ||
+      0;
+  }
   const totalProfit = totalValue - totalInvested;
   const roi =
     totalInvested > 0 ? ((totalProfit / totalInvested) * 100).toFixed(1) : 0;

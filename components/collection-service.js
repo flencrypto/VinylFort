@@ -55,14 +55,12 @@ class CollectionService {
   getStats() {
     const collection = this.getCollection();
     const totalRecords = collection.length;
-    const totalInvested = collection.reduce(
-      (sum, r) => sum + (parseFloat(r.purchasePrice) || 0),
-      0,
-    );
-    const totalValue = collection.reduce(
-      (sum, r) => sum + (parseFloat(r.estimatedValue) || 0),
-      0,
-    );
+    let totalInvested = 0;
+    let totalValue = 0;
+    for (const r of collection) {
+      totalInvested += parseFloat(r.purchasePrice) || 0;
+      totalValue += parseFloat(r.estimatedValue) || 0;
+    }
     const totalProfit = totalValue - totalInvested;
     const roi =
       totalInvested > 0 ? ((totalProfit / totalInvested) * 100).toFixed(1) : 0;
