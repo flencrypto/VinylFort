@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   CommandDialog,
@@ -23,20 +23,36 @@ const mockHits: Hit[] = [
   { label: "Aphex Twin — Selected Ambient Works (example)", href: "/record/saw", group: "Records" },
 ]
 
-export default function CommandK() {
+interface CommandKProps {
+  /** Controlled open state. When provided the component is controlled externally. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
+
+export default function CommandK({ open: controlledOpen, onOpenChange }: CommandKProps = {}) {
   const router = useRouter()
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+
+  const isControlled = controlledOpen !== undefined
+  const open = isControlled ? controlledOpen : internalOpen
+  const setOpen = useCallback(
+    (value: boolean) => {
+      if (!isControlled) setInternalOpen(value)
+      onOpenChange?.(value)
+    },
+    [isControlled, onOpenChange],
+  )
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault()
-        setOpen((v) => !v)
+        setOpen(!open)
       }
     }
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [])
+  }, [open, setOpen])
 
   const pages = useMemo(() => mockHits.filter((h) => h.group === "Pages"), [])
   const records = useMemo(() => mockHits.filter((h) => h.group === "Records"), [])
