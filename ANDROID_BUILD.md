@@ -7,9 +7,28 @@ The Android app is a **Trusted Web Activity (TWA)** — a lightweight native
 Android wrapper that loads the VinylVault PWA in a full-screen Chrome experience.
 It passes Android's hardware-back-button, deep-link, and offline-install criteria.
 
+## Pre-built APK
+
+A signed release APK is available at:
+```
+releases/VinylVault-1.0.0-release.apk
+```
+
+To install it directly on an Android phone:
+1. Copy the APK to your device (USB, Google Drive, email, etc.)
+2. On the phone: **Settings → Security → Install unknown apps** → enable for your file manager
+3. Tap the `.apk` file → Install
+4. **VinylVault** will appear on your home screen
+5. After installation, **disable "Install unknown apps"** again to maintain device security
+
+> ⚠️ Only install APKs from sources you trust. Always verify the file is from the
+> official VinylVault repository before installing.
+
 ---
 
-## Prerequisites
+## Building from Source
+
+### Prerequisites
 
 | Tool | Version | Install |
 |------|---------|---------|
@@ -80,6 +99,10 @@ keytool -list -v \
 ```
 
 Copy the `SHA256` certificate fingerprint — it includes colons (format: `AA:BB:CC:...`).
+
+> **Security note:** The SHA-256 fingerprint is a _public_ certificate hash — it is safe and
+> required to be publicly accessible in `assetlinks.json` so Android can verify TWA ownership.
+> The **private key** lives in the keystore file which is gitignored and must never be committed.
 
 ### Step 3 — Update `assetlinks.json`
 

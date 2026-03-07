@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
-        <item name="colorPrimary">@color/colorPrimary</item>
-        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-        <item name="colorAccent">@color/colorAccent</item>
+    <!-- Use a built-in Android theme to avoid requiring appcompat dependency.
+         androidbrowserhelper already pulls in appcompat transitively, but since
+         the TWA launcher activity does not render any app-owned UI we keep the
+         theme minimal and let Chrome handle all rendering. -->
+    <style name="AppTheme" parent="android:Theme.NoTitleBar">
         <item name="android:windowBackground">@color/colorSurface</item>
         <item name="android:statusBarColor">@color/colorSurface</item>
         <item name="android:navigationBarColor">@color/colorSurface</item>

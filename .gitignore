@@ -10,3 +10,9 @@ v2/.next/
 v2/node_modules/
 v2/.env
 v2/.env.local
+
+# Android build artifacts and keystore
+android/.gradle/
+android/build/
+android/app/build/
+android/keystore/

@@ -4,7 +4,7 @@
     "namespace": "android_app",
     "package_name": "pro.vinylvault.app",
     "sha256_cert_fingerprints": [
-      "REPLACE_WITH_YOUR_SIGNING_CERT_SHA256_FINGERPRINT"
+      "EC:B8:A6:5C:CF:7D:DC:6A:8A:69:4C:B3:3D:FF:23:42:C8:7D:FB:D1:22:C9:A4:16:C0:A7:18:00:F9:EE:B0:2D"
     ]
   }
 }]
