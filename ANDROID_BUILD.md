@@ -119,6 +119,22 @@ Edit `/.well-known/assetlinks.json` in the project root and replace
 Deploy the updated `assetlinks.json` to Netlify (it must be accessible at
 `https://vinylvault.netlify.app/.well-known/assetlinks.json`).
 
+### Step 3b — Set the in-app fingerprint
+
+The same fingerprint must also be embedded in the APK itself via the `asset_statements`
+manifest metadata. Pass it as an env var so the two values stay in sync:
+
+```bash
+export TWA_SHA256_CERT="AA:BB:CC:DD:EE:FF:..."   # same value as in assetlinks.json
+```
+
+`build.gradle` reads `TWA_SHA256_CERT` (or Gradle property `-PTWA_SHA256_CERT=…`) and
+injects it into the APK manifest. The build will fail with a clear error if it is not set.
+
+> **Why both?** Android verifies TWA ownership by matching the fingerprint in
+> `assetlinks.json` (served by your website) against the fingerprint declared inside
+> the APK. They must be identical for TWA verification to pass.
+
 ### Step 4 — Build release APK
 
 ```bash
@@ -126,6 +142,7 @@ export KEYSTORE_PATH="$(pwd)/android/keystore/release.keystore"
 export KEYSTORE_PASSWORD="your-keystore-password"
 export KEY_ALIAS="vinylvault"
 export KEY_PASSWORD="your-key-password"
+export TWA_SHA256_CERT="AA:BB:CC:DD:EE:FF:..."   # fingerprint from Step 2
 
 cd android
 ./build-apk.sh release https://vinylvault.netlify.app

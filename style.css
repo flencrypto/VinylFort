@@ -1002,10 +1002,10 @@ select {
   border: 1px solid #2e2924;
 }
 
-/* Improve touch targets everywhere */
+/* Improve touch targets for bottom-nav and interactive controls only */
 button,
-a,
-[role="button"] {
+.bottom-nav-item,
+.pwa-install-btn {
   min-height: 44px;
   min-width: 44px;
 }

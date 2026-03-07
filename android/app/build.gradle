@@ -14,11 +14,23 @@ android {
         versionName "1.0.0"
 
         // TWA host URL — update to your production Netlify URL
+        // SHA-256 fingerprint: set via Gradle property (-PTWA_SHA256_CERT=...) or env var TWA_SHA256_CERT
+        def twaSha256Cert = project.findProperty("TWA_SHA256_CERT") ?: System.getenv("TWA_SHA256_CERT")
+        if (!twaSha256Cert) {
+            throw new GradleException(
+                "Trusted Web Activity SHA-256 fingerprint not configured.\n" +
+                "Set Gradle property 'TWA_SHA256_CERT' or environment variable 'TWA_SHA256_CERT'\n" +
+                "to match your /.well-known/assetlinks.json. See ANDROID_BUILD.md Step 2b."
+            )
+        }
+        def assetStatements = '[{ "relation": ["delegate_permission/common.handle_all_urls"], ' +
+            '"target": { "namespace": "android_app", "package_name": "pro.vinylvault.app", ' +
+            '"sha256_cert_fingerprints": ["' + twaSha256Cert + '"] } }]'
         manifestPlaceholders = [
             hostName: "vinylvault.netlify.app",
             defaultUrl: "https://vinylvault.netlify.app/?source=twa",
             launcherName: "VinylVault",
-            assetStatements: '[{ "relation": ["delegate_permission/common.handle_all_urls"], "target": { "namespace": "android_app", "package_name": "pro.vinylvault.app", "sha256_cert_fingerprints": ["REPLACE_WITH_YOUR_SHA256"] } }]'
+            assetStatements: assetStatements
         ]
     }
 

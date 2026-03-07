@@ -59,7 +59,7 @@
 
             <meta-data
                 android:name="android.support.customtabs.trusted.FILE_PROVIDER_AUTHORITY"
-                android:value="pro.vinylvault.app.fileprovider" />
+                android:value="${applicationId}.fileprovider" />
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -84,7 +84,7 @@
         <!-- File provider for camera uploads -->
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="pro.vinylvault.app.fileprovider"
+            android:authorities="${applicationId}.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

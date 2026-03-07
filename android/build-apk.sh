@@ -49,16 +49,34 @@ if [ "$BUILD_TYPE" = "release" ]; then
     warn "assetlinks.json still has placeholder SHA-256 fingerprint."
     warn "TWA verification will fail until you update it. See ANDROID_BUILD.md Step 2."
   fi
+  # Warn if in-app fingerprint env var is not set
+  if [ -z "${TWA_SHA256_CERT:-}" ]; then
+    warn "TWA_SHA256_CERT is not set — build.gradle will fail."
+    warn "Export TWA_SHA256_CERT matching your assetlinks.json fingerprint. See ANDROID_BUILD.md Step 2b."
+  fi
 fi
 
 # ── Update host URL in build.gradle ──────────────────────────────────────────
+# Strip trailing slash to avoid double-slash in the default URL
+HOST_URL="${HOST_URL%/}"
 HOST=$(echo "$HOST_URL" | sed 's|https\?://||' | cut -d'/' -f1)
 info "Setting hostName to: $HOST"
+
+# Escape values for safe use inside sed replacement (avoid shell injection via metacharacters)
+# We escape: backslashes (must be first), double quotes, and & (matches full pattern in sed replacements)
+HOST_ESC="${HOST//\\/\\\\}"
+HOST_ESC="${HOST_ESC//\"/\\\"}"
+HOST_ESC="${HOST_ESC//&/\\&}"
+DEFAULT_URL="${HOST_URL}/?source=twa"
+DEFAULT_URL_ESC="${DEFAULT_URL//\\/\\\\}"
+DEFAULT_URL_ESC="${DEFAULT_URL_ESC//\"/\\\"}"
+DEFAULT_URL_ESC="${DEFAULT_URL_ESC//&/\\&}"
+
 # Use a temp file for portability (GNU sed and BSD sed both support this)
 GRAD_FILE="$ANDROID_DIR/app/build.gradle"
 GRAD_TMP="$GRAD_FILE.tmp"
-sed "s|hostName: \".*\"|hostName: \"$HOST\"|" "$GRAD_FILE" \
-  | sed "s|defaultUrl: \".*\"|defaultUrl: \"${HOST_URL}/?source=twa\"|" \
+sed "s|hostName: \".*\"|hostName: \"$HOST_ESC\"|" "$GRAD_FILE" \
+  | sed "s|defaultUrl: \".*\"|defaultUrl: \"$DEFAULT_URL_ESC\"|" \
   > "$GRAD_TMP" && mv "$GRAD_TMP" "$GRAD_FILE"
 
 # ── Build ─────────────────────────────────────────────────────────────────────
