@@ -187,7 +187,7 @@ export default async function SetupPage() {
           (it is git-ignored) and add your keys:
         </p>
         <pre className="text-xs font-mono bg-vv-card border border-vv-border rounded-vv p-3 overflow-x-auto text-vv-text/80">
-          {`# v2/.env.local\nDISCOGS_USER_TOKEN=your-token-here\nEBAY_CLIENT_ID=your-client-id\nEBAY_CLIENT_SECRET=your-client-secret\nOPENAI_API_KEY=sk-...`}
+          {`# v2/.env.local\n# XAI_API_KEY is optional — enables Grok fact-checking\nDISCOGS_USER_TOKEN=your-token-here\nEBAY_CLIENT_ID=your-client-id\nEBAY_CLIENT_SECRET=your-client-secret\nOPENAI_API_KEY=sk-...\nXAI_API_KEY=xai-...`}
         </pre>
         <p className="text-xs text-vv-text/50 mt-3">
           Restart the dev server (<code className="font-mono">pnpm dev</code> or{" "}

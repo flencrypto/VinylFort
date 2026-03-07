@@ -89,19 +89,18 @@ export const INTEGRATIONS: IntegrationRequirement[] = [
     id: "openai",
     name: "OpenAI / AI Provider",
     description:
-      "AI-powered OCR for runout and label photos, pressing identification, and market analysis.",
+      "AI-powered OCR for runout and label photos, pressing identification, and market analysis generation.",
     requiredEnvVars: ["OPENAI_API_KEY"],
-    optionalEnvVars: ["DEEPSEEK_API_KEY"],
+    optionalEnvVars: [],
     whereToGet: [
       "1. Sign in to platform.openai.com",
       "2. Navigate to API Keys (https://platform.openai.com/api-keys)",
       "3. Click 'Create new secret key'",
       "4. Copy the key and add OPENAI_API_KEY=sk-... to v2/.env.local",
-      "   ALTERNATIVE: Set DEEPSEEK_API_KEY instead to use DeepSeek as the AI provider",
+      "   TIP: Also configure the xAI (Grok) integration (XAI_API_KEY) for cross-validated valuations.",
     ],
     officialLinks: [
       "https://platform.openai.com/api-keys",
-      "https://platform.deepseek.com/api_keys",
     ],
     dependentRoutes: ["/add"],
     dependentActions: [
@@ -109,8 +108,35 @@ export const INTEGRATIONS: IntegrationRequirement[] = [
       "Add record — Barcode lookup + AI pressing identification",
     ],
     notes:
-      "DEEPSEEK_API_KEY can substitute for OPENAI_API_KEY for all AI tasks. " +
       "Keys are server-only — never exposed to the browser.",
+  },
+  {
+    id: "xai",
+    name: "xAI (Grok) — AI Fact-Checker",
+    description:
+      "Uses xAI's Grok model alongside OpenAI to cross-validate valuations and pressing identifications. Both AIs work as a team: OpenAI leads, Grok fact-checks.",
+    requiredEnvVars: ["XAI_API_KEY", "OPENAI_API_KEY"],
+    optionalEnvVars: [],
+    whereToGet: [
+      "1. Sign in to console.x.ai (https://console.x.ai)",
+      "2. Navigate to API Keys",
+      "3. Click 'Create API key'",
+      "4. Copy the key and add XAI_API_KEY=xai-... to v2/.env.local",
+      "   NOTE: OPENAI_API_KEY must also be set — xAI supplements OpenAI, it does not replace it.",
+    ],
+    officialLinks: [
+      "https://console.x.ai",
+      "https://docs.x.ai/docs",
+    ],
+    dependentRoutes: ["/add"],
+    dependentActions: [
+      "Add record — Fact-checked pressing identification (Grok validates OpenAI result)",
+    ],
+    notes:
+      "xAI acts as a second opinion: after OpenAI returns a result, Grok is queried " +
+      "independently and its answer is compared. Discrepancies surface a confidence warning in the UI. " +
+      "Key is server-only — never exposed to the browser. " +
+      "Planned: extend Grok cross-validation to valuations (/valuation) and record detail (/record/[id]) once those flows are wired to xAI.",
   },
 ]
 

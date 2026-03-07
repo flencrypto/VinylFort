@@ -16,26 +16,15 @@ export function getMissingEnvVars(required: string[]): string[] {
 /**
  * Returns the configured/missing status for a single integration.
  *
- * Handles "any-of" substitution: for the OpenAI integration, either
- * OPENAI_API_KEY or DEEPSEEK_API_KEY satisfies the OPENAI_API_KEY requirement,
- * since DeepSeek is a drop-in alternative for all AI tasks.
+ * xAI is a separate integration (id "xai") that complements OpenAI by
+ * fact-checking valuations and pressing identifications.  Neither replaces
+ * the other — both keys should be set to enable the full team workflow.
  */
 export function getIntegrationStatus(
   integration: IntegrationRequirement,
 ): IntegrationStatus {
-  let missingVars = getMissingEnvVars(integration.requiredEnvVars)
-  let configured = missingVars.length === 0
-
-  // Special-case: OPENAI_API_KEY requirement is satisfied by either key.
-  if (integration.id === "openai") {
-    const hasOpenAIKey = !!process.env.OPENAI_API_KEY
-    const hasDeepSeekKey = !!process.env.DEEPSEEK_API_KEY
-
-    if (hasOpenAIKey || hasDeepSeekKey) {
-      missingVars = missingVars.filter((v) => v !== "OPENAI_API_KEY")
-      configured = missingVars.length === 0
-    }
-  }
+  const missingVars = getMissingEnvVars(integration.requiredEnvVars)
+  const configured = missingVars.length === 0
 
   return {
     id: integration.id,

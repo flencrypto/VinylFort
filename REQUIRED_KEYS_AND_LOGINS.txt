@@ -16,8 +16,8 @@ Create the file  v2/.env.local  (git-ignored) and paste your keys:
   EBAY_CLIENT_ID=your-client-id
   EBAY_CLIENT_SECRET=your-client-secret
   OPENAI_API_KEY=sk-...
-  # Optional
-  DEEPSEEK_API_KEY=...
+  # Optional — enables xAI (Grok) fact-checking for valuations and identification
+  XAI_API_KEY=xai-...
   EBAY_USER_TOKEN=...
   EBAY_ACCESS_TOKEN=...
 
@@ -108,44 +108,74 @@ Notes:
   Production environment only — Sandbox is not supported for all APIs.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-3. OPENAI / AI PROVIDER
+3. OPENAI
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Feature unlocked:
   AI-powered OCR for runout / label photos, pressing identification from
-  barcode, market analysis generation (v1 frontend + v2 Add page).
+  barcode, and market analysis generation (v2 Add page).
 
 Required env var (v2):
   OPENAI_API_KEY       — OpenAI secret key (sk-...)
 
-Optional alternative (v2):
-  DEEPSEEK_API_KEY     — DeepSeek API key; substitutes for OPENAI_API_KEY
-                         for all OCR and analysis tasks.
-
 OAuth required:  No
 
-Where to get OpenAI key:
+Where to get it:
   1. Sign in to https://platform.openai.com
   2. API Keys: https://platform.openai.com/api-keys
   3. Create new secret key
   4. Set OPENAI_API_KEY=sk-... in v2/.env.local
 
-Where to get DeepSeek key (alternative):
-  1. Sign in to https://platform.deepseek.com
-  2. API Keys: https://platform.deepseek.com/api_keys
-  3. Create new key
-  4. Set DEEPSEEK_API_KEY=... in v2/.env.local
+Official docs:
+  https://platform.openai.com/docs
 
 Dependent UI actions (v2):
-  - /add  →  "Barcode" card (barcode lookup + AI identification)
+  - /add  →  "Barcode" card (barcode lookup + AI pressing identification)
   - /add  →  "Photos" card (OCR for label / runout text)
   - /setup →  Setup instructions
 
-v1 (static frontend) notes:
-  In the v1 app, the API key is entered in the browser Settings page and
-  stored in localStorage.  This is a known risk (see docs/CODE_REVIEW.md,
-  finding #2).  The v2 app routes all AI calls through server-only API
-  routes, eliminating the client-side key exposure.
+Notes:
+  Server-only.  Key never reaches the browser.
+  Pair with XAI_API_KEY (see section 4) for cross-validated results.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. XAI (GROK) — AI FACT-CHECKER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Feature unlocked:
+  xAI's Grok model acts as a second-opinion AI alongside OpenAI.
+  After OpenAI returns a valuation or pressing identification, Grok is
+  queried independently and its answer is compared.  When the two models
+  agree, confidence rises.  When they disagree, a warning surfaces in
+  the UI so the collector can investigate further.
+
+Required env var (v2):
+  XAI_API_KEY          — xAI API key (xai-...)
+
+This integration is optional for the overall application but XAI_API_KEY is
+required for the xAI integration to function when enabled.
+
+OAuth required:  No
+
+Where to get it:
+  1. Sign in to https://console.x.ai
+  2. Navigate to API Keys
+  3. Click "Create API key"
+  4. Set XAI_API_KEY=xai-... in v2/.env.local
+
+Official docs:
+  https://docs.x.ai/docs
+
+Dependent UI actions (v2):
+  - /add       →  Fact-checked pressing identification
+  - /valuation →  Cross-validated market analysis
+  - /record/[id] →  AI confidence indicator when both models agree
+  - /setup     →  Setup instructions
+
+Notes:
+  xAI supplements OpenAI — it does NOT replace it.  Both keys should be
+  set for the full team workflow.  Server-only; key never reaches the
+  browser.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 GATING BEHAVIOUR (v2 Next.js app)
