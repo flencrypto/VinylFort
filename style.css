@@ -1010,8 +1010,7 @@ a,
   min-width: 44px;
 }
 
-/* Smooth momentum scroll on iOS */
+/* Smooth scroll */
 html {
-  -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
 }

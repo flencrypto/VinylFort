@@ -44,14 +44,22 @@ if [ "$BUILD_TYPE" = "release" ]; then
   [ -n "${KEY_ALIAS:-}"         ] || error "KEY_ALIAS not set."
   [ -n "${KEY_PASSWORD:-}"      ] || error "KEY_PASSWORD not set."
   [ -f "$KEYSTORE_PATH" ]         || error "Keystore not found: $KEYSTORE_PATH"
+  # Warn if assetlinks.json still has the placeholder fingerprint
+  if grep -q "REPLACE_WITH_YOUR_SIGNING_CERT_SHA256_FINGERPRINT" "$PROJECT_ROOT/.well-known/assetlinks.json" 2>/dev/null; then
+    warn "assetlinks.json still has placeholder SHA-256 fingerprint."
+    warn "TWA verification will fail until you update it. See ANDROID_BUILD.md Step 2."
+  fi
 fi
 
 # ── Update host URL in build.gradle ──────────────────────────────────────────
 HOST=$(echo "$HOST_URL" | sed 's|https\?://||' | cut -d'/' -f1)
 info "Setting hostName to: $HOST"
-sed -i.bak "s|hostName: \".*\"|hostName: \"$HOST\"|" "$ANDROID_DIR/app/build.gradle"
-sed -i.bak "s|defaultUrl: \".*\"|defaultUrl: \"${HOST_URL}/?source=twa\"|" "$ANDROID_DIR/app/build.gradle"
-rm -f "$ANDROID_DIR/app/build.gradle.bak"
+# Use a temp file for portability (GNU sed and BSD sed both support this)
+GRAD_FILE="$ANDROID_DIR/app/build.gradle"
+GRAD_TMP="$GRAD_FILE.tmp"
+sed "s|hostName: \".*\"|hostName: \"$HOST\"|" "$GRAD_FILE" \
+  | sed "s|defaultUrl: \".*\"|defaultUrl: \"${HOST_URL}/?source=twa\"|" \
+  > "$GRAD_TMP" && mv "$GRAD_TMP" "$GRAD_FILE"
 
 # ── Build ─────────────────────────────────────────────────────────────────────
 cd "$ANDROID_DIR"

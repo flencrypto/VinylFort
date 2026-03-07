@@ -79,13 +79,13 @@ keytool -list -v \
   -alias vinylvault
 ```
 
-Copy the `SHA256` certificate fingerprint (format: `AA:BB:CC:...`).
+Copy the `SHA256` certificate fingerprint — it includes colons (format: `AA:BB:CC:...`).
 
 ### Step 3 — Update `assetlinks.json`
 
 Edit `/.well-known/assetlinks.json` in the project root and replace
-`REPLACE_WITH_YOUR_SIGNING_CERT_SHA256_FINGERPRINT` with your fingerprint
-(remove colons, use uppercase):
+`REPLACE_WITH_YOUR_SIGNING_CERT_SHA256_FINGERPRINT` with your fingerprint,
+**keeping the colon separators exactly as printed by `keytool`**:
 
 ```json
 "sha256_cert_fingerprints": [
