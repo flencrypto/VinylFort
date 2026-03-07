@@ -7,7 +7,7 @@
  *   - API/third-party requests → Network-first with cache fallback
  */
 
-const CACHE_VERSION = 'vinylvault-v1';
+const CACHE_VERSION = 'vinylvault-v2';
 
 /** App-shell assets to pre-cache on install */
 const PRECACHE_URLS = [
@@ -21,9 +21,14 @@ const PRECACHE_URLS = [
   '/collection.js',
   '/deals.js',
   '/manifest.json',
+  '/static/favicon.ico',
   '/static/icon-192.png',
   '/static/icon-512.png',
   '/static/icon-512-maskable.png',
+  '/static/icon-192.svg',
+  '/static/icon-512.svg',
+  '/static/screenshot-mobile.svg',
+  '/static/screenshot-desktop.svg',
   '/components/vinyl-nav.js',
   '/components/vinyl-footer.js',
   '/components/deal-scanner.js',
@@ -38,6 +43,11 @@ const PRECACHE_URLS = [
   '/components/pricecharting-service.js',
   '/components/stat-card.js',
   '/components/telegram-service.js',
+  '/components/bitcoin-service.js',
+  '/components/solana-service.js',
+  '/components/web3-service.js',
+  '/components/multiversx-service.js',
+  '/futuristic-features.js',
 ];
 
 // ─── Install ──────────────────────────────────────────────────────────────────

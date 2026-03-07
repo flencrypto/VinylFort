@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  VinylVault Android APK Build Script
+#  Builds a Trusted Web Activity (TWA) APK that wraps vinylvault.netlify.app
+# =============================================================================
+# Requirements:
+#   - Java 17+ (export JAVA_HOME=/path/to/java)
+#   - Android SDK (export ANDROID_HOME=/path/to/android-sdk)
+#   - For release builds: signing keystore (see ANDROID_BUILD.md)
+# =============================================================================
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ANDROID_DIR="$(cd "$SCRIPT_DIR" && pwd)"
+PROJECT_ROOT="$(cd "$ANDROID_DIR/.." && pwd)"
+
+# ── Colour output ─────────────────────────────────────────────────────────────
+GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
+info()  { echo -e "${GREEN}[INFO]${NC} $*"; }
+warn()  { echo -e "${YELLOW}[WARN]${NC} $*"; }
+error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
+
+# ── Parse args ────────────────────────────────────────────────────────────────
+BUILD_TYPE="${1:-debug}"   # debug | release
+HOST_URL="${2:-https://vinylvault.netlify.app}"
+
+info "Building VinylVault Android APK"
+info "  Type    : $BUILD_TYPE"
+info "  Host URL: $HOST_URL"
+echo
+
+# ── Validate environment ──────────────────────────────────────────────────────
+command -v java >/dev/null 2>&1 || error "Java not found. Install JDK 17+ and set JAVA_HOME."
+JAVA_VER=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}' | cut -d'.' -f1)
+[ "$JAVA_VER" -ge 17 ] || error "Java 17+ required (found $JAVA_VER)."
+
+[ -n "${ANDROID_HOME:-}" ] || error "ANDROID_HOME is not set. Install Android SDK and set ANDROID_HOME."
+[ -d "$ANDROID_HOME" ]     || error "ANDROID_HOME=$ANDROID_HOME does not exist."
+
+if [ "$BUILD_TYPE" = "release" ]; then
+  [ -n "${KEYSTORE_PATH:-}"     ] || error "KEYSTORE_PATH not set. See ANDROID_BUILD.md."
+  [ -n "${KEYSTORE_PASSWORD:-}" ] || error "KEYSTORE_PASSWORD not set."
+  [ -n "${KEY_ALIAS:-}"         ] || error "KEY_ALIAS not set."
+  [ -n "${KEY_PASSWORD:-}"      ] || error "KEY_PASSWORD not set."
+  [ -f "$KEYSTORE_PATH" ]         || error "Keystore not found: $KEYSTORE_PATH"
+fi
+
+# ── Update host URL in build.gradle ──────────────────────────────────────────
+HOST=$(echo "$HOST_URL" | sed 's|https\?://||' | cut -d'/' -f1)
+info "Setting hostName to: $HOST"
+sed -i.bak "s|hostName: \".*\"|hostName: \"$HOST\"|" "$ANDROID_DIR/app/build.gradle"
+sed -i.bak "s|defaultUrl: \".*\"|defaultUrl: \"${HOST_URL}/?source=twa\"|" "$ANDROID_DIR/app/build.gradle"
+rm -f "$ANDROID_DIR/app/build.gradle.bak"
+
+# ── Build ─────────────────────────────────────────────────────────────────────
+cd "$ANDROID_DIR"
+
+if [ "$BUILD_TYPE" = "release" ]; then
+  info "Building release APK + AAB (App Bundle)..."
+  ./gradlew assembleRelease bundleRelease --no-daemon
+  APK_PATH="app/build/outputs/apk/release/app-release.apk"
+  AAB_PATH="app/build/outputs/bundle/release/app-release.aab"
+  info "✅ Release APK: $ANDROID_DIR/$APK_PATH"
+  info "✅ Release AAB: $ANDROID_DIR/$AAB_PATH"
+  info ""
+  warn "To install on a device via USB:"
+  warn "  adb install $ANDROID_DIR/$APK_PATH"
+  warn ""
+  warn "Upload the .aab to Google Play Console for Play Store distribution."
+else
+  info "Building debug APK..."
+  ./gradlew assembleDebug --no-daemon
+  APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
+  info "✅ Debug APK: $ANDROID_DIR/$APK_PATH"
+  info ""
+  info "Install on a connected device:"
+  info "  adb install $ANDROID_DIR/$APK_PATH"
+fi
+
+info "Build complete!"

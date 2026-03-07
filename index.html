@@ -4,10 +4,19 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="VinylVault" />
+    <meta name="theme-color" content="#c8973f" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#c8973f" />
+    <meta name="description" content="Professional eBay listing generator and deal finder for vinyl records. AI-powered pricing, OCR scanning, and collection management." />
     <title>VinylVault Pro - eBay Listing Generator</title>
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico" />
+    <link rel="icon" type="image/svg+xml" href="/static/icon-512.svg" />
+    <link rel="apple-touch-icon" href="/static/icon-192.png" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="stylesheet" href="style.css" />
     <script src="https://cdn.tailwindcss.com"></script>
@@ -944,6 +953,85 @@
           });
         }
       });
+    </script>
+
+    <!-- PWA Install Prompt -->
+    <div id="pwaInstallBanner" class="pwa-install-banner" role="banner" aria-label="Install VinylVault app">
+      <div class="install-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0e0c0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      </div>
+      <div class="install-text">
+        <div class="install-title">Install VinylVault</div>
+        <div class="install-subtitle">Add to home screen for the best experience</div>
+      </div>
+      <div class="install-actions">
+        <button class="pwa-install-btn primary" id="pwaInstallBtn">Install</button>
+        <button class="pwa-install-btn secondary" id="pwaInstallDismiss" aria-label="Dismiss install prompt">✕</button>
+      </div>
+    </div>
+
+    <!-- Bottom Navigation (mobile only) -->
+    <nav class="bottom-nav" aria-label="Main navigation">
+      <div class="bottom-nav-inner">
+        <a href="index.html" class="bottom-nav-item active" aria-label="New Listing">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          Listing
+        </a>
+        <a href="deals.html" class="bottom-nav-item" aria-label="Deal Finder">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Deals
+        </a>
+        <a href="collection.html" class="bottom-nav-item" aria-label="My Collection">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+          Collection
+        </a>
+        <a href="settings.html" class="bottom-nav-item" aria-label="Settings">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Settings
+        </a>
+      </div>
+    </nav>
+
+    <!-- PWA install prompt script -->
+    <script>
+      (function () {
+        var deferredPrompt = null;
+        var banner = document.getElementById('pwaInstallBanner');
+        var installBtn = document.getElementById('pwaInstallBtn');
+        var dismissBtn = document.getElementById('pwaInstallDismiss');
+
+        window.addEventListener('beforeinstallprompt', function (e) {
+          e.preventDefault();
+          deferredPrompt = e;
+          if (!sessionStorage.getItem('pwa-install-dismissed')) {
+            banner.classList.add('show');
+          }
+        });
+
+        if (installBtn) {
+          installBtn.addEventListener('click', function () {
+            banner.classList.remove('show');
+            if (deferredPrompt) {
+              deferredPrompt.prompt();
+              deferredPrompt.userChoice.then(function () {
+                deferredPrompt = null;
+              });
+            }
+          });
+        }
+
+        if (dismissBtn) {
+          dismissBtn.addEventListener('click', function () {
+            banner.classList.remove('show');
+            sessionStorage.setItem('pwa-install-dismissed', '1');
+          });
+        }
+
+        window.addEventListener('appinstalled', function () {
+          banner.classList.remove('show');
+          deferredPrompt = null;
+        });
+      }());
     </script>
   </body>
 </html>

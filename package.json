@@ -4,7 +4,7 @@
   "private": true,
   "description": "VinylVault front-end application tooling",
   "scripts": {
-    "lint": "eslint . --ext .js,.mjs,.cjs --max-warnings=0",
+    "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "echo \"No automated tests configured yet\"",
     "format": "prettier --check .",

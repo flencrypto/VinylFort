@@ -1,0 +1,58 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'pro.vinylvault.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "pro.vinylvault.app"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+
+        // TWA host URL — update to your production Netlify URL
+        manifestPlaceholders = [
+            hostName: "vinylvault.netlify.app",
+            defaultUrl: "https://vinylvault.netlify.app/?source=twa",
+            launcherName: "VinylVault",
+            assetStatements: '[{ "relation": ["delegate_permission/common.handle_all_urls"], "target": { "namespace": "android_app", "package_name": "pro.vinylvault.app", "sha256_cert_fingerprints": ["REPLACE_WITH_YOUR_SHA256"] } }]'
+        ]
+    }
+
+    signingConfigs {
+        release {
+            // Set these via environment variables for CI/CD:
+            // KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
+            storeFile file(System.getenv("KEYSTORE_PATH") ?: "keystore/release.keystore")
+            storePassword System.getenv("KEYSTORE_PASSWORD") ?: ""
+            keyAlias System.getenv("KEY_ALIAS") ?: "vinylvault"
+            keyPassword System.getenv("KEY_PASSWORD") ?: ""
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+        debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+}
+
+dependencies {
+    // Trusted Web Activity support
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+}
