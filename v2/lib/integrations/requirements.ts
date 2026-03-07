@@ -122,22 +122,21 @@ export const INTEGRATIONS: IntegrationRequirement[] = [
       "2. Navigate to API Keys",
       "3. Click 'Create API key'",
       "4. Copy the key and add XAI_API_KEY=xai-... to v2/.env.local",
-      "   NOTE: OPENAI_API_KEY must also be set — xAI supplements OpenAI, it does not replace it.",
+      "   NOTE: For best results, also set OPENAI_API_KEY — xAI is designed to supplement OpenAI, not replace it.",
     ],
     officialLinks: [
       "https://console.x.ai",
       "https://docs.x.ai/docs",
     ],
-    dependentRoutes: ["/add", "/valuation", "/record/[id]"],
+    dependentRoutes: ["/add"],
     dependentActions: [
       "Add record — Fact-checked pressing identification (Grok validates OpenAI result)",
-      "Valuation — Cross-validated market analysis (Grok corroborates OpenAI valuation)",
-      "Record detail — AI confidence boost when both models agree",
     ],
     notes:
       "xAI acts as a second opinion: after OpenAI returns a result, Grok is queried " +
       "independently and its answer is compared. Discrepancies surface a confidence warning in the UI. " +
-      "Key is server-only — never exposed to the browser.",
+      "Key is server-only — never exposed to the browser. " +
+      "Planned: extend Grok cross-validation to valuations (/valuation) and record detail (/record/[id]) once those flows are wired to xAI.",
   },
 ]
 
