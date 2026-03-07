@@ -15,36 +15,99 @@ This repository now includes a concrete completion plan and security/compliance 
 - Privacy and data-retention policy baseline.
 - STRIDE-oriented threat model.
 
-## Install on your phone
+## Installing VinylVault
 
-VinylVault is a **Progressive Web App (PWA)**. You can install it to your phone's home screen for a full-screen, app-like experience with no app store required.
+VinylVault is a **Progressive Web App (PWA)**. You can install it on phones, tablets, and desktop computers for a full-screen, app-like experience with no app store required. An optional Android APK is also available for sideloading.
 
-### Android (Chrome)
+---
 
-1. Open the VinylVault URL in **Chrome for Android**.
+### 📱 Mobile — Android
+
+#### Android: Chrome, Edge, or Brave
+
+These three browsers share the same installation flow on Android.
+
+1. Open the VinylVault URL in **Chrome**, **Edge**, or **Brave** for Android.
 2. Tap the **⋮ (three-dot) menu** in the top-right corner.
-3. Tap **"Add to Home screen"** (or **"Install app"** if Chrome shows a banner at the bottom of the screen).
+3. Tap **"Add to Home screen"** (or **"Install app"** if an install banner appears at the bottom).
 4. Confirm by tapping **"Add"** or **"Install"** in the dialog.
-5. The **VinylVault** icon will appear on your home screen. Tap it to launch the app in full-screen mode.
+5. The **VinylVault** icon will appear on your home screen. Tap it to launch in full-screen mode.
 
-> **Tip:** If you don't see the option, make sure you are on `https://` — PWA installation requires a secure connection.
+> **Tip:** If the option is missing, make sure you are on `https://` — PWA installation requires a secure connection.
 
-### Android (Samsung Internet)
+#### Android: Samsung Internet
 
 1. Open the VinylVault URL in **Samsung Internet**.
 2. Tap the **☰ (hamburger) menu** at the bottom of the screen.
 3. Tap **"Add page to"** → **"Home screen"**.
 4. Tap **"Add"** to confirm.
 
-### iOS (Safari — iPhone & iPad)
+#### Android: Firefox
 
-1. Open the VinylVault URL in **Safari** (other iOS browsers cannot install PWAs).
-2. Tap the **Share button** (the box with an arrow pointing up) at the bottom of the screen.
+Firefox for Android does not currently support PWA installation. Use Chrome, Edge, Brave, or Samsung Internet instead.
+
+---
+
+### 📱 Mobile — iPhone & iPad (iOS / iPadOS)
+
+#### iOS / iPadOS: Safari
+
+1. Open the VinylVault URL in **Safari** (only Safari can install PWAs on iOS/iPadOS).
+2. Tap the **Share button** (box with an arrow pointing up) at the bottom of the screen.
 3. Scroll down and tap **"Add to Home Screen"**.
 4. Edit the name if you wish, then tap **"Add"** in the top-right corner.
 5. The **VinylVault** icon will appear on your home screen. Tap it to launch in full-screen mode.
 
-> **Note:** iOS requires Safari specifically — Chrome and Firefox on iOS cannot install PWAs.
+> **Note:** Chrome, Firefox, and other browsers on iOS/iPadOS use Apple's WebKit engine and cannot install PWAs — Safari is required.
+
+---
+
+### 🖥️ Desktop — Windows, macOS, and Linux
+
+#### Windows / macOS / Linux: Chrome, Edge, or Brave
+
+Chrome, Edge, and Brave all share the same installation flow on every desktop OS (Windows, macOS, and Linux).
+
+1. Open the VinylVault URL in **Chrome**, **Edge**, or **Brave**.
+2. Look for the **install icon** (⊕ or a small screen icon) in the right-hand side of the address bar.  
+   - If no icon appears, click the **⋮ menu** → **"Save and share"** (Chrome) or **"Apps"** (Edge) → **"Install VinylVault"**.
+3. Click **"Install"** in the confirmation dialog.
+4. VinylVault opens in its own window and a shortcut is added to your taskbar / Dock / desktop.
+
+> **Tip:** You can also re-open it from your OS's application launcher or start menu just like any other app.
+
+#### macOS: Safari (macOS Sonoma (14) or later)
+
+Safari on macOS Sonoma (14) or later supports installing web apps directly to the Dock.
+
+1. Open the VinylVault URL in **Safari**.
+2. In the menu bar click **File** → **Add to Dock…** (macOS Sonoma (14) or later).
+3. Edit the name if you wish, then click **"Add"**.
+4. VinylVault appears in your Dock and runs as a standalone app.
+
+> **Note:** The "Add to Dock" option requires **macOS Sonoma (14) or later**. On older macOS versions use Chrome or Edge instead.
+
+#### Windows / macOS / Linux: Firefox
+
+Firefox does not currently support PWA installation on desktop. Use Chrome, Edge, or Brave for the installable app experience, or simply keep VinylVault open in a Firefox tab.
+
+---
+
+### 📦 Android APK (sideload — alternative to PWA)
+
+A signed release APK is available for Android devices if you prefer a native install from outside the Play Store.
+
+**Install the pre-built APK:**
+
+1. Download the latest signed APK from the [Releases](releases/latest) page of this repository.
+2. On your Android device go to **Settings → Security → Install unknown apps** and enable it for your file manager.
+3. Open the downloaded `.apk` file and tap **Install**.
+4. VinylVault will appear on your home screen.
+5. After installation, **disable "Install unknown apps"** again to maintain device security.
+
+> ⚠️ Only install APKs from sources you trust. Always verify the file is from the official VinylVault repository.
+
+For developer instructions (building from source, signing, and publishing to Google Play) see **[ANDROID_BUILD.md](ANDROID_BUILD.md)**.
 
 ---
 
